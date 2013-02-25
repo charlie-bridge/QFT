@@ -1,7 +1,5 @@
 package qft;
 
-import qft.IntMatPos;
-
 import java.util.*;
 
 public class InteractionMatrix {
@@ -12,17 +10,19 @@ public class InteractionMatrix {
     private int _cutOffMom;
     private int _numStates;
     private int _phiPow;
-    private HashMap<IntMatPos, Double> _elements;
+    private List<Map<Integer, Double>> _elements;
     
     public InteractionMatrix(int systemSize, int cutOffMom, int phiPow) {
         
         //Cut off momentum should be greater than or equal to one
+    	
+    	//TODO Test declaring Map and Lists sizes against not
         
         _systemSize = systemSize;
         _cutOffMom = cutOffMom;
         _phiPow = phiPow;
         _numStates = (((cutOffMom*(cutOffMom+1))/2) + 1);
-        _elements = new HashMap<IntMatPos, Double>(_numStates*(int)Math.pow(systemSize, 2)*(int)Math.pow(2, (phiPow-1)));
+        _elements = new ArrayList<Map<Integer, Double>>(_numStates);
         
     }
     
@@ -33,7 +33,7 @@ public class InteractionMatrix {
         int column;
         
         int[] momenta = new int[_phiPow-1];
-        for(int i=0; i<_phiPow-1; i++) {
+        for(int i=0; i<(_phiPow-1); i++) {
             momenta[i]=0;
         }
         
@@ -147,6 +147,7 @@ public class InteractionMatrix {
         
         //Stores the matrix element, check for already existing elements with the same position
         
+    	
         
     }
     
