@@ -8,13 +8,17 @@ public class FockState {
     
     private int[] _coeffs;
     private int _systemSize;
+    private double _epsilon;
+    private double _mass;
     private boolean _isValid;
     
-    public FockState(int systemSize) {
+    public FockState(int systemSize, double epsilon, double mass) {
         
         //Initialise the Fock State, set to the vacuum state
         
         _systemSize = systemSize;
+        _epsilon = epsilon;
+        _mass = mass;
         _coeffs = new int[systemSize];
         setAsVacuum();
         _isValid = true;
@@ -223,6 +227,32 @@ public class FockState {
             
         }
         
+    }
+    
+    public double calcEnergy() {
+    	
+    	//Returns the energy of this Fock State
+    	
+    	double energy = 0;
+    	
+    	for(int i=0; i<_systemSize; i++) {
+    		
+    		if(_coeffs[i] > 0) {
+    			energy = (energy + (_coeffs[i]*calcFrequency(i, _systemSize, _epsilon, _mass)));
+    		}
+    		
+    	}
+    	
+    	return energy;
+    	
+    }
+    
+    public static double calcFrequency(int p, int systemSize, double epsilon, double mass) {
+    	
+    	//Returns the frequency of a particular momentum mode
+    	
+    	return (Math.sqrt((4/(Math.pow(epsilon, 2))) * Math.pow(Math.sin((Math.PI*(double)p)/((double)systemSize)),  2) + Math.pow(mass, 2)));
+    	
     }
     
 }
