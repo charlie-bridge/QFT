@@ -41,21 +41,22 @@ public class InteractionMatrix {
         int column;
         
         int[] momenta = new int[_phiPow-1];
-        for(int i=0; i<(_phiPow-1); i++) {
-            momenta[i]=0;
-        }
         
         for(int row=0; row<_numStates; row++) {
             
             //Run through the matrix rows
+        	
+        	for(int i=0; i<(_phiPow-1); i++) {
+                momenta[i]=0;
+            }
             
             rowState.setAsIndex(row);
             
-            for(int j=0; j<((int)Math.pow(2, (_phiPow-1))); j++) {
+            for(int j=0; j<((int)Math.pow(2, (_phiPow - 1))); j++) {
                 
                 //Run through the various momenta combinations
             
-                for(int k=0; k<(_phiPow-1); k++) {
+                for(int k=0; k<((int)Math.pow(2, _phiPow)); k++) {
                     
                     //Run through the various operator combinations
                     
@@ -83,7 +84,9 @@ public class InteractionMatrix {
         
     }
     
-    private void incrementMomentaLabel(int[] momenta) {
+    public void incrementMomentaLabel(int[] momenta) {
+    	
+    	//PUBLIC FOR TESTING ONLY, DO NOT USE OUTSIDE THIS CLASS
         
         //Increments the momenta label array
         //Add one to first value, but if that is = (_systemSize-1) then set it to zero
@@ -93,7 +96,7 @@ public class InteractionMatrix {
         
         for(int i=0; (i<(_phiPow-1) && (keepGoing == true)); i++) {
             
-            if(momenta[i]<_systemSize) {
+            if(momenta[i]<(_systemSize-1)) {
                 momenta[i]++;
                 keepGoing = false;
             }
@@ -108,33 +111,48 @@ public class InteractionMatrix {
         
     }
     
-    private void applyOperators(FockState passedRow, int[] momenta, int opTypes) {
+    public void applyOperators(FockState passedRow, int[] momenta, int opTypes) {
+    	
+    	//PUBLIC FOR TESTING ONLY, DO NOT USE OUTSIDE THIS CLASS
         
         //Applies operators to the passed row FockState according to the integer i
-        //We have 2^(phiPow-1) possibilities for the operators - so use binary
-        //For each 0 bit use annihilation, for each 1 bit use creation
+        //We have 2^phiPow possibilities for the operators - so use binary
+        //For each 1 bit use annihilation, for each 0 bit use creation (on the passed <bra|)
         //The rightmost operator is special, its momentum is set by the others
     	//this is stored outside this method for use later
         
         _rightMostP = 0;
         _operatorFactors = 1.0;
         
-        for(int i=0; i<(_phiPow-2); i++) {
+        for(int i=0; i<(_phiPow-1); i++) {
+        	
+        	//Run through the operators from left to right
             
             if(((opTypes & (1 << i)) != 0)) {
+            	
+            	//This bit is a 1, apply an annihilation operator to the relevant momentum mode
+            	//Update the running operator factor and rightmost operator momentum
+            	//If this operation invalidates the state set the factor to zero
+                
+                if(passedRow.getCoeff(momenta[i]) > 0) {
+            		_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(momenta[i])));
+            	}
+                else {
+                	_operatorFactors = 0.0;
+                }
+                
+                passedRow.applyAnnihil(momenta[i]);
+                _rightMostP = _rightMostP - momenta[i];
+                
+            }
+            else {
+            	
+            	//This bit is a 0, apply a creation operator to the relevant momentum mode
+            	//Update the running operator factor and rightmost operator momentum
                 
             	_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(momenta[i]) + 1.0));
                 passedRow.applyCreation(momenta[i]);
                 _rightMostP = _rightMostP + momenta[i];
-                
-            }
-            else {
-                
-            	if(passedRow.getCoeff(momenta[i]) > 0) {
-            		_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(momenta[i])));
-            	}
-                passedRow.applyAnnihil(momenta[i]);
-                _rightMostP = _rightMostP - momenta[i];
                 
             }
             
@@ -143,21 +161,52 @@ public class InteractionMatrix {
         //Put the rightmost momenta in the required range before using it
         
         if(((opTypes & (1 << (_phiPow-1))) != 0)) {
+        	
+        	//This bit is a 1, apply an annihilation operator to the rightmost operator momentum mode
+        	//Complete the operator factor for this set of operators
+        	//If this operation invalidates the state set the factor to zero
+        	
+        	if (_rightMostP >= 0) {
+        		_rightMostP = (Math.abs(_rightMostP % _systemSize));
+        	}
+        	else {
+        		_rightMostP = _systemSize - (Math.abs(_rightMostP % _systemSize));
+        	}
             
-            _rightMostP = Math.abs(_rightMostP % _systemSize);
-            passedRow.applyCreation(_rightMostP);
+        	if(passedRow.getCoeff(_rightMostP) > 0) {
+        		_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(_rightMostP)));
+        	}
+        	else {
+        		_operatorFactors = 0.0;
+        	}
+        	
+        	passedRow.applyAnnihil(_rightMostP);
             
         }
         else {
+        	
+        	//This bit is a 0, apply a creation operator to the rightmost operator momentum mode
+        	//Complete the operator factor for this set of operators
+        	
+        	if (_rightMostP >= 0) {
+        		_rightMostP = _systemSize - (Math.abs(_rightMostP % _systemSize));
+        	}
+        	else {
+        		_rightMostP = (Math.abs(_rightMostP % _systemSize));
+        	}
+        	
+        	_rightMostP = Math.abs(_rightMostP % _systemSize);
+        	_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(_rightMostP) + 1.0));
+            passedRow.applyCreation(_rightMostP);
             
-            _rightMostP = _systemSize - (Math.abs(_rightMostP % _systemSize));
-            passedRow.applyAnnihil(_rightMostP);
             
         }
         
     }
     
-    private void store(int row, int column, int[] momenta) {
+    public void store(int row, int column, int[] momenta) {
+    	
+    	//PUBLIC FOR TESTING ONLY, DO NOT USE OUTSIDE THIS CLASS
         
     	//Calculate the value to store
     	//The rightmost momentum value has already been calculated by applyOperators
@@ -184,5 +233,20 @@ public class InteractionMatrix {
     	
     }
     
-
+    public double getFactors() {
+    	
+    	//FOR TESTING ONLY, DO NOT USE
+    	
+    	return _operatorFactors;
+    	
+    }
+    
+    public Map<Integer, Double> getRow(int row) {
+    	
+    	//Returns the required row
+    	
+    	return _elements.get(row);
+    	
+    }
+    
 }
