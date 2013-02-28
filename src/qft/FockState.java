@@ -116,7 +116,7 @@ public class FockState {
         //Applies a creation operator for the pth momentum mode
         //does nothing if p is outside the required range
         
-        if((p<(_systemSize-1)) && (p>=0)) {
+        if((p<_systemSize) && (p>=0)) {
             _coeffs[p]++;
         }
         
@@ -124,11 +124,12 @@ public class FockState {
     
     public void applyAnnihil(int r) {
         
-        //Applies an annihilation operator for the qth momentum mode
+        //Applies an annihilation operator for the rth momentum mode
         //does nothing if r is outside the required range
         //If the annihilation operator destroys the state, set it to invalid
         
-        if((r<(_systemSize-1)) && (r>=0)) {
+        if((r<_systemSize) && (r>=0)) {
+        	
             _coeffs[r]--;
             
             if(_coeffs[r]==-1) {
@@ -217,6 +218,8 @@ public class FockState {
     public void makeSameAs(FockState passedState) {
         
         //Makes this Fock state the same as the passed one
+    	
+    	//DOES NOT CHECK MASS OR EPSILON
         
         if(passedState.getSystemSize() == _systemSize) {
             for(int i=0; i<_systemSize; i++) {
@@ -251,7 +254,7 @@ public class FockState {
     	
     	//Returns the frequency of a particular momentum mode
     	
-    	return (Math.sqrt((4/(Math.pow(epsilon, 2))) * Math.pow(Math.sin((Math.PI*(double)p)/((double)systemSize)),  2) + Math.pow(mass, 2)));
+    	return (Math.sqrt(((4/(Math.pow(epsilon, 2))) * Math.pow(Math.sin((Math.PI*(double)p)/((double)systemSize)),  2)) + Math.pow(mass, 2)));
     	
     }
     

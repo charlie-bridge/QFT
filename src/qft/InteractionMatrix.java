@@ -1,6 +1,9 @@
 package qft;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import utilities.Factorial;
 
@@ -12,10 +15,12 @@ public class InteractionMatrix {
     private double _epsilon;							//Distance between two adjacent points
     private double _mass;								//Mass of the boson (phi^2 interaction strength)
     private int _cutOffMom;								//Highest total Fock State momentum considered
-    private int _numStates;								//Total number of Fock States considered
+    private int _numStates;								//Total number of Fock States considered (caution, index starts at 0)
     private int _phiPow;								//Power of the interaction term
     private int _rightMostP;							//Farthest right operator momentum
     private double _operatorFactors;					//Factors resulting from application of operators
+    private int _momCombs;								//The number of momenta combinations
+    private int _opCombs;								//The number of operator combinations
     private List<Map<Integer, Double>> _elements;		//Store of all the matrix elements
     
     public InteractionMatrix(int systemSize, double epsilon, double mass, int cutOffMom, int phiPow) {
@@ -29,8 +34,10 @@ public class InteractionMatrix {
         _mass = mass;
         _cutOffMom = cutOffMom;
         _phiPow = phiPow;
-        _numStates = (((_cutOffMom*(_cutOffMom+1))/2) + 1);
-        _elements = new ArrayList<Map<Integer, Double>>(_numStates);
+        _numStates = (((_cutOffMom*(_cutOffMom+1))/2)+1);
+        _momCombs = (int)Math.pow(_systemSize, (phiPow-1));
+        _opCombs = (int)Math.pow(2, phiPow);
+        _elements = new ArrayList<Map<Integer, Double>>();
         
     }
     
@@ -39,44 +46,57 @@ public class InteractionMatrix {
         FockState rowState = new FockState(_systemSize, _epsilon, _mass);
         FockState opedState = new FockState(_systemSize, _epsilon, _mass);
         int column;
-        
         int[] momenta = new int[_phiPow-1];
         
         for(int row=0; row<_numStates; row++) {
             
             //Run through the matrix rows
+        	//Set the row state and create the row Map
+        	
+            rowState.setAsIndex(row);
+            Map<Integer, Double> rowMap = new HashMap<Integer, Double>();
+    		_elements.add(row, rowMap);
+
+        	//Reset the momenta combinations array
         	
         	for(int i=0; i<(_phiPow-1); i++) {
                 momenta[i]=0;
             }
             
-            rowState.setAsIndex(row);
-            
-            for(int j=0; j<((int)Math.pow(2, (_phiPow - 1))); j++) {
+            for(int j=0; j<_momCombs; j++) {
                 
                 //Run through the various momenta combinations
             
-                for(int k=0; k<((int)Math.pow(2, _phiPow)); k++) {
+                for(int opType=0; opType<_opCombs; opType++) {
                     
                     //Run through the various operator combinations
                     
                     opedState.makeSameAs(rowState);
-                    applyOperators(opedState, momenta, k);
+                    applyOperators(opedState, momenta, opType);
                     
                     if(opedState.isValid()==true) {
+                    	
+                    	//Calculate the column
+                    	
+                    	column = opedState.calcIndex();
                         
-                        //If the resulting state is valid, store the result
+                    	if(column < _numStates) {
+                    		
+                    		//If the resulting state is valid and within the cutoff, store the result
+                    		
+                    		store(row, column, momenta);
                         
-                        column = opedState.calcIndex();
-                        store(row, column, momenta);
-                        
+                    	}
+                    	
                     }
                 
                 }
             
-                //Increment the momenta label array
+                //Increment the momenta label array unless this is the final run through
                 
-                incrementMomentaLabel(momenta);
+                if(j != (_momCombs-1)) {
+                	incrementMomentaLabel(momenta);
+                }
                 
             }
             
@@ -107,7 +127,7 @@ public class InteractionMatrix {
         }
         
         //If keepGoing is still true, all values must be N, so all combinations have been considered
-        //WATCH OUT FOR THIS
+        //WATCH OUT FOR THIS - will set to all zeros after reaching the end
         
     }
     
@@ -204,14 +224,14 @@ public class InteractionMatrix {
         
     }
     
-    public void store(int row, int column, int[] momenta) {
-    	
-    	//PUBLIC FOR TESTING ONLY, DO NOT USE OUTSIDE THIS CLASS
+    private void store(int row, int column, int[] momenta) {
         
     	//Calculate the value to store
     	//The rightmost momentum value has already been calculated by applyOperators
     	
-    	double maElVal = (_epsilon * Math.pow((_systemSize*_epsilon * 2.0), -(_phiPow/2.0)) * (1/Factorial.calc(_phiPow)));
+    	//WATCH OUT FOR: Because calcMatrix goes through the rows in order, they will be created in order
+    	
+    	double maElVal = (_epsilon * Math.pow((_systemSize*_epsilon * 2.0), -(_phiPow/2.0)) * (1.0/Factorial.calc(_phiPow)));
     	maElVal = (maElVal * _operatorFactors);
     	maElVal = (maElVal * Math.pow(FockState.calcFrequency(_rightMostP, _systemSize, _epsilon, _mass), -0.5));
     	
@@ -223,13 +243,14 @@ public class InteractionMatrix {
     	
     	//Check if a value already exists at this location, if it does, just add to it
     	
-    	if(_elements.get(row).containsKey(column)) {
+    	if(_elements.get(row).containsKey(column) == true) {
     		maElVal = (maElVal + _elements.get(row).get(column));
-    		_elements.get(row).put(column, maElVal);
+    		_elements.get(row).put(column, maElVal);	
     	}
     	else {
     		_elements.get(row).put(column, maElVal);
     	}
+
     	
     }
     

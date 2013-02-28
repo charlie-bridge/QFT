@@ -98,23 +98,26 @@ public class InteractionMatrixTest {
 	}
 	
 	@Test
-	public void testStore() {
-		
-		//Tests the store method
-		
-		InteractionMatrix test5 = new InteractionMatrix(15, 0.15, 1.1, 200, 3);
-		FockState testState5 = new FockState(15, 0.15, 1.1);
-		int[] momenta5 = new int[2];
-		int opTypes = 1231231231;
-		
-		
-		
-	}
-	
-	@Test
 	public void testCalc() {
 		
 		//Tests the overall calculation method
+		
+		InteractionMatrix test6 = new InteractionMatrix(2, 0.11, 1.3, 3, 3);
+		double epsilon = 0.0000000001;
+		test6.calcMatrix();
+		
+		assertEquals(test6.getRow(0).get(1), 0.1362031092, epsilon);
+		assertEquals(test6.getRow(0).get(6), 0.1038061339, epsilon);
+		assertEquals(test6.getRow(1).get(0), 0.1362031092, epsilon);
+		assertEquals(test6.getRow(1).get(3), 0.3724177824, epsilon);
+	    assertEquals(test6.getRow(1).get(5), 0.01282278625, epsilon);
+		assertEquals(test6.getRow(2).get(4), 0.1543372675, epsilon);
+		assertEquals(test6.getRow(3).get(1), 0.3724177824, epsilon);
+		assertEquals(test6.getRow(3).get(6), 0.6763228326, epsilon);
+		assertEquals(test6.getRow(4).get(2), 0.1543372675, epsilon);
+		assertEquals(test6.getRow(5).get(1), 0.01282278625, epsilon);
+		assertEquals(test6.getRow(6).get(0), 0.1038061339, epsilon);
+		assertEquals(test6.getRow(6).get(3), 0.6763228326, epsilon);
 		
 	}
 	
