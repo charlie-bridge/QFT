@@ -11,19 +11,18 @@ public class InteractionMatrix {
     
     //Class for calculating and storing an interaction matrix for theory of general interaction power
     
-    private int _systemSize;							//Number of discrete spatial points in the system
-    private double _epsilon;							//Distance between two adjacent points
-    private double _mass;								//Mass of the boson (phi^2 interaction strength)
-    private int _cutOffMom;								//Highest total Fock State momentum considered
-    private int _numStates;								//Total number of Fock States considered (caution, index starts at 0)
-    private int _phiPow;								//Power of the interaction term
-    private int _rightMostP;							//Farthest right operator momentum
-    private double _operatorFactors;					//Factors resulting from application of operators
-    private int _momCombs;								//The number of momenta combinations
-    private int _opCombs;								//The number of operator combinations
-    private List<Map<Integer, Double>> _elements;		//Store of all the matrix elements
+    private int 		_systemSize;					//Number of discrete spatial points in the system
+    private double 		_epsilon;						//Distance between two adjacent points
+    private double		_mass;							//Mass of the boson (phi^2 interaction strength)
+    private int 		_numStates;						//Total number of Fock States considered (caution, index starts at 0)
+    private int 		_phiPow;						//Power of the interaction term
+    private int 		_rightMostP;					//Farthest right operator momentum
+    private double 		_operatorFactors;				//Factors resulting from application of operators
+    private int 		_momCombs;						//The number of momenta combinations
+    private int 		_opCombs;						//The number of operator combinations
+    private List<Map<Integer, Double>> 	_elements;		//Store of all the matrix elements
     
-    public InteractionMatrix(int systemSize, double epsilon, double mass, int cutOffMom, int phiPow) {
+    public InteractionMatrix(int systemSize, double epsilon, double mass, int numStates, int phiPow) {
         
         //Cut off momentum should be greater than or equal to one
     	
@@ -32,9 +31,8 @@ public class InteractionMatrix {
         _systemSize = systemSize;
         _epsilon = epsilon;
         _mass = mass;
-        _cutOffMom = cutOffMom;
         _phiPow = phiPow;
-        _numStates = (((_cutOffMom*(_cutOffMom+1))/2)+1);
+        _numStates = numStates;
         _momCombs = (int)Math.pow(_systemSize, (phiPow-1));
         _opCombs = (int)Math.pow(2, phiPow);
         _elements = new ArrayList<Map<Integer, Double>>();

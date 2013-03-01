@@ -14,8 +14,8 @@ public class InteractionMatrixTest {
 		
 		//Tests the momenta label incrementation method
 		
-		InteractionMatrix test1 = new InteractionMatrix(10, 0.1, 1.2, 30, 3);
-		InteractionMatrix test2 = new InteractionMatrix(50, 0.1, 1.2, 30, 5);
+		InteractionMatrix test1 = new InteractionMatrix(10, 0.1, 1.2, 300, 3);
+		InteractionMatrix test2 = new InteractionMatrix(50, 0.1, 1.2, 300, 5);
 		int[] momenta1 = new int[2];
 		int[] momenta2 = new int[4];
 		double epsilon = 0.00000001;
@@ -53,8 +53,8 @@ public class InteractionMatrixTest {
 		//TODO Maybe try some more, this is very important to a couple more test cases would be good
 		
 		double epsilon = 0.0000001;
-		InteractionMatrix test3 = new InteractionMatrix(10, 0.1, 1.2, 50, 4);
-		InteractionMatrix test4 = new InteractionMatrix(15, 0.2, 1.5, 40, 3);
+		InteractionMatrix test3 = new InteractionMatrix(10, 0.1, 1.2, 500, 4);
+		InteractionMatrix test4 = new InteractionMatrix(15, 0.2, 1.5, 400, 3);
 		int[] momenta3 = new int[3];
 		int[] momenta4 = new int[2];
 		int opType3 =  15;
@@ -102,7 +102,7 @@ public class InteractionMatrixTest {
 		
 		//Tests the overall calculation method
 		
-		InteractionMatrix test6 = new InteractionMatrix(2, 0.11, 1.3, 3, 3);
+		InteractionMatrix test6 = new InteractionMatrix(2, 0.11, 1.3, 7, 3);
 		double epsilon = 0.0000000001;
 		test6.calcMatrix();
 		
