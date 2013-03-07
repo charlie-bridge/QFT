@@ -2,20 +2,26 @@ package unitTests;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import qft.GeneralState;
 import uk.ac.cam.cal56.maths.Complex;
+import uk.ac.cam.cal56.qft.interactingtheory.Interaction;
 
 public class GeneralStateTest {
 
 	private GeneralState _genState;
-	
+	Map<Interaction, Double> lambdas = new HashMap<Interaction, Double>();
+
 	@Before
 	public void setUp() throws Exception {
 		
-		_genState = new GeneralState(6, 3, 1.1, 0.1, 0.1, 1);
+		lambdas.put(Interaction.PHI_CUBED, 0.5);
+		_genState = new GeneralState(6, 3, 1.1, 0.1, 0.1, lambdas);
 		
 	}
 

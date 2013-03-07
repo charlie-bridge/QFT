@@ -1,8 +1,11 @@
 package qft;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import uk.ac.cam.cal56.maths.Complex;
+import uk.ac.cam.cal56.qft.interactingtheory.Interaction;
 import uk.ac.cam.cal56.qft.interactingtheory.State;
 
 public class GeneralState implements State {
@@ -15,7 +18,6 @@ public class GeneralState implements State {
     private int 				_cutOffMom;				//Highest total Fock State momentum considered
     private int 				_numStates;				//Total number of Fock States considered (caution, index starts at 0)
     private int 				_phiPow;				//Power of the interaction term
-    private double 				_lambda;				//Interaction strength
     private InteractionMatrix 	_interaction;			//Interaction Matrix
     private double				_dt;					//Time step size
     private double 				_time;					//Stores the system time
@@ -23,9 +25,11 @@ public class GeneralState implements State {
     private Complex[]           _coeffs;				//Fock state coefficients at this point in time
     private double[] 			_frequencies;			//Frequencies of all of the states
     
+    private Map<Interaction, Double> 		_lambdas; 	//Interaction strengths
+    
     private Complex[]			_secondCoeffs;			//Required for integrator
 
-	public GeneralState(int N, int Pmax, double m, double dx, double dt, double lambda){
+	public GeneralState(int N, int Pmax, double m, double dx, double dt, Map<Interaction, Double> lambdas){
 		
 		//Constructor for the general state
 		
@@ -34,11 +38,12 @@ public class GeneralState implements State {
 		_systemSize = N;
 		_mass = m;
 		_epsilon = dx;
-		_lambda = lambda;
 		_cutOffMom = 50;
 		_numStates = (((_cutOffMom*(_cutOffMom+1))/2)+1);
 		_phiPow = 3;
 		_dt = dt;
+		
+		_lambdas = new HashMap<Interaction, Double>();
 		
 		_interaction = new InteractionMatrix(_systemSize, _epsilon, _mass, _numStates, _phiPow);
 		_coeffs = new Complex[_numStates];
@@ -57,6 +62,10 @@ public class GeneralState implements State {
 			
 		}
 		
+		//Set the lambdas
+		
+		_lambdas = lambdas;
+		
 		//Set the state to the vacuum
 		
 		reset();
@@ -64,11 +73,11 @@ public class GeneralState implements State {
 	}
 	
 	@Override
-	public void setInteractionStrength(double lambda) {
+	public void setInteractionStrength(Interaction interaction, double lambda) {
 		
-		//Sets the interaction strength lambda
+		//Sets the interaction strengths
 		
-		_lambda = lambda;
+		_lambdas.put(interaction, lambda);
 		
 	}
 
@@ -121,14 +130,14 @@ public class GeneralState implements State {
 
 			}
 			
-			interactionPart.times(_lambda);
+			interactionPart.times(_lambdas.get(Interaction.PHI_CUBED));
 			
 			//Step the derivatives
 			
 			_coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[i].times(_frequencies[i]));
 			_coeffDerivs[i] =_coeffDerivs[i].plus(interactionPart);
 			_coeffDerivs[i] = _coeffDerivs[i].timesi(-1);
-			_coeffDerivs[i] = _coeffDerivs[i].times(_lambda);
+			_coeffDerivs[i] = _coeffDerivs[i].times(_lambdas.get(Interaction.PHI_CUBED));
 			
 			
 			//Reset the interaction part
@@ -162,7 +171,7 @@ public class GeneralState implements State {
 				sum = sum.plus(_coeffs[Hij.getKey()].times(Hij.getValue()));
 			}
 			
-			sum = sum.times(_lambda);
+			sum = sum.times(_lambdas.get(Interaction.PHI_CUBED));
 			sum = sum.plus(_coeffs[i].times(_frequencies[i]));
 			Complex cdot = sum.timesi(-1);
 			next[i] = _coeffs[i].plus(cdot.times(_dt));
@@ -189,7 +198,7 @@ public class GeneralState implements State {
 					_coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[Hij.getKey()].times(Hij.getValue()));
 				}
 				
-				_coeffDerivs[i] = _coeffDerivs[i].times(_lambda);
+				_coeffDerivs[i] = _coeffDerivs[i].times(_lambdas.get(Interaction.PHI_CUBED));
 				_coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[i].times(_frequencies[i]));
 				_coeffDerivs[i] = _coeffDerivs[i].timesi(-1);
 				next[i] = _coeffs[i].plus(_coeffDerivs[i].times(_dt));
@@ -211,7 +220,7 @@ public class GeneralState implements State {
 					_coeffDerivs[i] = _coeffDerivs[i].plus(_secondCoeffs[Hij.getKey()].times(Hij.getValue()));
 				}
 				
-				_coeffDerivs[i] = _coeffDerivs[i].times(_lambda);
+				_coeffDerivs[i] = _coeffDerivs[i].times(_lambdas.get(Interaction.PHI_CUBED));
 				_coeffDerivs[i] = _coeffDerivs[i].plus(_secondCoeffs[i].times(_frequencies[i]));
 				_coeffDerivs[i] = _coeffDerivs[i].timesi(-1);
 				
