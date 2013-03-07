@@ -10,6 +10,7 @@ public class StolenCode extends QFTSandbox {
 
 	// Stolen QFTSandbox
 	
+	@Override
 	protected void setupQuantumState() {
         _state = new GeneralState(_N, _Pmax, _m, _dx, _dt, _lambda);
         drawPlots();
@@ -21,7 +22,7 @@ public class StolenCode extends QFTSandbox {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    QFTSandbox frame = new QFTSandbox();
+                    StolenCode frame = new StolenCode();
                     frame.setVisible(true);
                 }
                 catch (Exception e) {

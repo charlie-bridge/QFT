@@ -1,10 +1,8 @@
 package qft;
 
-import uk.ac.cam.cal56.graphics.DensityPlot;
-import uk.ac.cam.cal56.graphics.Plot;
+import java.util.Map.Entry;
+
 import uk.ac.cam.cal56.maths.Complex;
-import uk.ac.cam.cal56.maths.FFT;
-import uk.ac.cam.cal56.maths.FourierTransform;
 import uk.ac.cam.cal56.qft.interactingtheory.State;
 
 public class GeneralState implements State {
@@ -23,8 +21,9 @@ public class GeneralState implements State {
     private double 				_time;					//Stores the system time
     private Complex[]			_coeffDerivs;			//Fock state coefficient derivatives at this point in time
     private Complex[]           _coeffs;				//Fock state coefficients at this point in time
-    private FourierTransform    _ft = new FFT();		//Fourier transform for calculating position probability magnitudes
     private double[] 			_frequencies;			//Frequencies of all of the states
+    
+    private Complex[]			_secondCoeffs;			//Required for integrator
 
 	public GeneralState(int N, int Pmax, double m, double dx, double dt, double lambda){
 		
@@ -36,7 +35,7 @@ public class GeneralState implements State {
 		_mass = m;
 		_epsilon = dx;
 		_lambda = lambda;
-		_cutOffMom = 200;
+		_cutOffMom = 50;
 		_numStates = (((_cutOffMom*(_cutOffMom+1))/2)+1);
 		_phiPow = 3;
 		_dt = dt;
@@ -78,13 +77,31 @@ public class GeneralState implements State {
 		
 		//Called in Carl's framework code, abstract away to allow multiple integrators
 		
-		step2ndOrderSymp();
+		//step2ndOrderSymp();
+		//simple();
+		newIntegrator();
 		
 	}
 	
+	@Override
+	public void step(int numSteps) {
+		
+		//Called in Carl's framework code, abstract away to allow multiple integrators
+		//Perform numSteps of steps
+		
+		 for (int i = 0; i < numSteps; i++) {
+			 step();
+		 }
+
+		
+	}
+	
+	@SuppressWarnings("unused")
 	private void step2ndOrderSymp() {
 		
 		//Second order symplectic integration step
+		
+		//TODO fix Complex addings
 		
 		Complex interactionPart = Complex.zero();
 		
@@ -98,11 +115,9 @@ public class GeneralState implements State {
 			
 			//First calculate the interaction part, multiply it by the interaction strength
 			
-			for(int j=0; j<_numStates; j++) {
-				
-				if (_interaction.getRow(j).get(i) != null) {
-					interactionPart.plus(_coeffs[j].times(_interaction.getRow(j).get(i)));
-				}
+			for(Entry<Integer, Double> Hij: _interaction.getRow(i).entrySet()) {
+				interactionPart = interactionPart.plus(_coeffs[Hij.getKey()].times(Hij.getValue()));
+
 
 			}
 			
@@ -110,8 +125,11 @@ public class GeneralState implements State {
 			
 			//Step the derivatives
 			
-			_coeffDerivs[i].plus(_coeffs[i].times(_frequencies[i]));
-			_coeffDerivs[i].plus(interactionPart);
+			_coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[i].times(_frequencies[i]));
+			_coeffDerivs[i] =_coeffDerivs[i].plus(interactionPart);
+			_coeffDerivs[i] = _coeffDerivs[i].timesi(-1);
+			_coeffDerivs[i] = _coeffDerivs[i].times(_lambda);
+			
 			
 			//Reset the interaction part
 			
@@ -123,30 +141,128 @@ public class GeneralState implements State {
 		
 		for(int k=0; k<_numStates; k++) {
 			
-			_coeffs[k].plus(_coeffDerivs[k].times(_dt));
+			_coeffs[k] = _coeffs[k].plus(_coeffDerivs[k].times(_dt));
 			
 		}
 		
 	}
 
+	@SuppressWarnings("unused")
+	private void simple() {
+		
+		_time += _dt;
+		
+		Complex[] next = new Complex[_numStates];
+		
+		for(int i=0; i<_numStates; i++) {
+			
+			Complex sum = Complex.zero();
+			
+			for(Entry<Integer, Double> Hij: _interaction.getRow(i).entrySet()) {
+				sum = sum.plus(_coeffs[Hij.getKey()].times(Hij.getValue()));
+			}
+			
+			sum = sum.times(_lambda);
+			sum = sum.plus(_coeffs[i].times(_frequencies[i]));
+			Complex cdot = sum.timesi(-1);
+			next[i] = _coeffs[i].plus(cdot.times(_dt));
+			
+		}
+		
+		_coeffs = next;
+			
+	}
+	
+	private void newIntegrator() {
+		
+		//If this is the first step, do an Euler jump, otherwise do the proper integration method
+		
+		if(_time == 0.0) {
+			
+			Complex[] next = new Complex[_numStates];
+			
+			for(int i=0; i<_numStates; i++) {
+				
+				_coeffDerivs[i] = Complex.zero();
+				
+				for(Entry<Integer, Double> Hij: _interaction.getRow(i).entrySet()) {
+					_coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[Hij.getKey()].times(Hij.getValue()));
+				}
+				
+				_coeffDerivs[i] = _coeffDerivs[i].times(_lambda);
+				_coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[i].times(_frequencies[i]));
+				_coeffDerivs[i] = _coeffDerivs[i].timesi(-1);
+				next[i] = _coeffs[i].plus(_coeffDerivs[i].times(_dt));
+				
+			}
+			
+			_secondCoeffs = next;
+			
+		}
+		else {
+			
+			//Calculate the derivatives
+			
+			for(int i=0; i<_numStates; i++) {
+				
+				_coeffDerivs[i] = Complex.zero();
+				
+				for(Entry<Integer, Double> Hij: _interaction.getRow(i).entrySet()) {
+					_coeffDerivs[i] = _coeffDerivs[i].plus(_secondCoeffs[Hij.getKey()].times(Hij.getValue()));
+				}
+				
+				_coeffDerivs[i] = _coeffDerivs[i].times(_lambda);
+				_coeffDerivs[i] = _coeffDerivs[i].plus(_secondCoeffs[i].times(_frequencies[i]));
+				_coeffDerivs[i] = _coeffDerivs[i].timesi(-1);
+				
+			}
+			
+			//Store the _secondCoeffs for reassignment later
+			
+			Complex[] store = _secondCoeffs;
+			
+			//Leapfrog
+			
+			for(int j=0; j<_numStates; j++) {
+				
+				_secondCoeffs[j] = _coeffs[j].plus(_coeffDerivs[j].times(2*_dt));
+				
+			}
+			
+			//Set the old second to the new first
+			
+			_coeffs = store;
+			
+		}
+		
+		//step time
+		
+		_time+=_dt;
+		
+	}
+	
 	@Override
-	public void reset() {
+	public void reset(int... particleMomenta) {
 		
 		//Resets the general quantum state
-		//RESETS TO VACUUM FOR NOW, RESET TO INITIAL LATER???
 		
 		_time = 0.0;
-		_coeffs[0] = Complex.one();
+		//_coeffs[0] = Complex.one();
+		_coeffs[0] = Complex.zero();
 		for(int i=1; i<_numStates; i++) {
 			_coeffs[i] = Complex.zero();
 		}
 		
+		
+		_coeffs[FockState.getIndex1PState(1, _systemSize, _epsilon, _mass)] = new Complex(0.70710678, 0);
+		_coeffs[FockState.getIndex1PState(0, _systemSize, _epsilon, _mass)] = new Complex(0.5, 0);
+		_coeffs[FockState.getIndex1PState(2, _systemSize, _epsilon, _mass)] = new Complex(0.5, 0);
+		
 		//Set derivatives to zero too
 		
-		for(int j=1; j<_numStates; j++) {
-			_coeffDerivs[j] = Complex.zero();
-		}
-		
+		//for(int j=0; j<_numStates; j++) {
+		//	_coeffDerivs[j] = Complex.zero();
+		//}
 		
 	}
 
@@ -159,39 +275,41 @@ public class GeneralState implements State {
 	}
 
 	@Override
-	public double get0P() {
+	public Complex get0P() {
 		
 		//Gets the zero-particle state magnitude
 		
-		return _coeffs[0].modSquared();
+		return _coeffs[0];
 	}
 
 	@Override
-	public double[] get1PMomenta() {
+	public Complex[] get1PMom() {
 		
 		//Gets the one-particle state momenta magnitudes
 		
-		double[] onePMomMags = new double[_systemSize];
-		FockState stepState = new FockState(_systemSize, _epsilon, _mass);
-		int stepIndex = 0;
+		Complex[] onePMomMags = new Complex[_systemSize];
+		Integer index = 0;
 		
 		//Set the stepping state to the first one momentum state
-		
-		stepState.incrementState();
 
         for (int i=0; i<_systemSize; i++) {
         	
-        	//Find the stepping state's index
+        	//Find the index
         	
-        	stepIndex = stepState.calcIndex();
+        	index = FockState.getIndex1PState(i, _systemSize, _epsilon, _mass);
         	
-        	//Set the magnitude
-        
-        	onePMomMags[i] = _coeffs[stepIndex].modSquared();
-        
-        	//Increment the state
+        	//Set the magnitude, if the state is over the cutoff set it to zero
         	
-        	stepState.incrementState();
+        	if((index != null) && (index<_numStates)) {
+        		
+        		onePMomMags[i] = _coeffs[index];
+        		
+        	}
+        	else {
+        		
+        		onePMomMags[i] = Complex.zero();
+        		
+        	}
         	
         }
         
@@ -200,54 +318,14 @@ public class GeneralState implements State {
 	}
 
 	@Override
-	public double[] get1PPositions() {
-		
-		//Gets the one-particle state position magnitudes
-		
-		double[] onePPosMags = new double[_systemSize];
-		Complex[] toTransform = new Complex[_systemSize];
-		Complex[] transformed;
-		FockState stepState = new FockState(_systemSize, _epsilon, _mass);
-		int stepIndex = 0;
-		
-		//Prepare the list of coefficients to transform
-		stepState.incrementState();
-		
-		for(int i=0; i<_systemSize; i++) {
-			
-			stepIndex = stepState.calcIndex();
-			toTransform[i] = _coeffs[stepIndex];
-			stepState.incrementState();
-			
-		}
-		
-		//Transform the list of coefficients
-		
-		transformed = _ft.transform(toTransform);
-		
-		//Set the magnitudes
-		
-		for (int j = 0; j<_systemSize; j++) {
-			
-			onePPosMags[j] = transformed[j].modSquared();
-            
-		}
-		
-		return onePPosMags;
-	}
-
-	@Override
-	public double[][] get2PMomenta() {
+	public Complex[][] get2PMom() {
 		
 		//Gets the two-particle momenta magnitudes
 		
-		double[][] twoPMomMags = new double[_systemSize][_systemSize];
-		FockState stepState = new FockState(_systemSize, _epsilon, _mass);
-		int stepIndex = 0;
+		Complex[][] twoPMomMags = new Complex[_systemSize][_systemSize];
+		Integer index = 0;
 		
 		//Set the stepping states to the first two-particle state
-		
-		stepState.setCoeff(0, 2);
 		
 		for (int i = 0; i<_systemSize; i++) {
 			
@@ -255,22 +333,29 @@ public class GeneralState implements State {
 				
 				//Calculate the index for this state
 				
-				stepIndex = stepState.calcIndex();
+				index = FockState.getIndex2PState(i, j, _systemSize, _epsilon, _mass);
 				
-				//Store the magnitude
+				//Store the magnitude, if the state is over the cutoff set it to zero
 				
-				double value = _coeffs[stepIndex].modSquared();
-				twoPMomMags[i][j] = value;
+				Complex value = Complex.zero();
+				
+				if((index != null) && (index<_numStates)) {
+					
+					value = _coeffs[index];
+					twoPMomMags[i][j] = value;
+					
+				}
+				else {
+
+					twoPMomMags[i][j] = Complex.zero();
+					
+				}
 				
 				//If this does not lie on the diagonal, copy the value to its mirror position too
 				
 				if (i != j) {
 					twoPMomMags[j][i] = value;
 				}
-				
-				//Increment the state
-				
-				stepState.incrementState();
 				
 			}
 	            
@@ -280,81 +365,29 @@ public class GeneralState implements State {
 	        
 	}
 
-	@Override
-	public double[][] get2PPositions() {
+	public double getModSquared() {
 		
-		//Gets the two-particle position magnitudes
+		//Returns the sum of the complex coefficient's moduli
 		
-		double[][] twoPPosMags = new double[_systemSize][_systemSize];
-		Complex[][] toTransform = new Complex[_systemSize][_systemSize];
-		Complex[][] transformed;
-		FockState stepState = new FockState(_systemSize, _epsilon, _mass);
-		int stepIndex = 0;
+		double returnVal = 0.0;
 		
-		//Set the stepping state to the first two-particle state
+		for(int i=0; i<_numStates; i++) {
+			
+			returnVal += _coeffs[i].modSquared();
+			
+		}
 		
-		stepState.setCoeff(0, 2);
-
-        for (int i=0; i<_systemSize; i++) {
-        	
-            for (int j=i; j <_systemSize; j++) {
-            	
-            	//Calculate the index for this state
-            	
-            	stepIndex = stepState.calcIndex();
-            	
-            	//Store the value that will be transformed
-            	
-                Complex value = _coeffs[stepIndex];
-                toTransform[i][j] = value;
-                
-                //If this does not lie on the diagonal, copy the value to its mirror position too
-                
-                if (i != j) {
-                    
-                	toTransform[j][i] = value;
-                	
-                }
-                
-            }
-            
-        }
-        
-        //Transform the two-dimensional complex matrix
-        
-        transformed = _ft.transform2D(toTransform);
-        
-        for (int k = 0; k<_systemSize; k++) {
-
-            for (int h = k; h<_systemSize; h++) {
-            	
-            	//Store the magnitude
-            	
-                double value = transformed[k][h].modSquared();
-                twoPPosMags[k][h] = value;
-                
-                //If this does not lie on the diagonal, copy the value to its mirror position too
-                
-                if (k != h) {
-                	
-                	twoPPosMags[h][k] = value;
-                	
-                }
-                
-            }
-            
-        }
-        
-        return twoPPosMags;
-        
-	}
-
-	@Override
-	public void updatePlots(Plot p0m, Plot p0p, Plot p1m, Plot p1p,
-			DensityPlot p2m, DensityPlot p2p) {
-		// TODO Auto-generated method stub
-		
+		return returnVal;
 	}
 	
+	public double getRemainingProbability() {
+		return 0.0;
+	}
+	
+	public void setTimeStep(double dt) {
+		
+		_dt = dt;
+		
+	}
 
 }

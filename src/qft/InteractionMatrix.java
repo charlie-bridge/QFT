@@ -43,7 +43,7 @@ public class InteractionMatrix {
         
         FockState rowState = new FockState(_systemSize, _epsilon, _mass);
         FockState opedState = new FockState(_systemSize, _epsilon, _mass);
-        int column;
+        Integer column;
         int[] momenta = new int[_phiPow-1];
         
         for(int row=0; row<_numStates; row++) {
@@ -78,7 +78,7 @@ public class InteractionMatrix {
                     	
                     	column = opedState.calcIndex();
                         
-                    	if(column < _numStates) {
+                    	if((column != null) && (column < _numStates)) {
                     		
                     		//If the resulting state is valid and within the cutoff, store the result
                     		
@@ -160,7 +160,19 @@ public class InteractionMatrix {
                 }
                 
                 passedRow.applyAnnihil(momenta[i]);
-                _rightMostP = _rightMostP - momenta[i];
+                
+                //The rightmost momentum is set by the momentum just used
+                
+                if((momenta[i]%2) == 0) {
+                	
+                	_rightMostP = _rightMostP - (int)Math.floor((momenta[i]+1)/2);
+                	
+                }
+                else {
+                	
+                	_rightMostP = _rightMostP + (int)Math.floor((momenta[i]+1)/2);
+                	
+                }
                 
             }
             else {
@@ -170,7 +182,19 @@ public class InteractionMatrix {
                 
             	_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(momenta[i]) + 1.0));
                 passedRow.applyCreation(momenta[i]);
-                _rightMostP = _rightMostP + momenta[i];
+                
+                //The rightmost momentum is set by the momentum just used
+                
+                if((momenta[i]%2) == 0) {
+                	
+                	_rightMostP = _rightMostP + (int)Math.floor((momenta[i]+1)/2);
+                	
+                }
+                else {
+                	
+                	_rightMostP = _rightMostP - (int)Math.floor((momenta[i]+1)/2);
+                	
+                }
                 
             }
             
@@ -184,13 +208,29 @@ public class InteractionMatrix {
         	//Complete the operator factor for this set of operators
         	//If this operation invalidates the state set the factor to zero
         	
-        	if (_rightMostP >= 0) {
-        		_rightMostP = (Math.abs(_rightMostP % _systemSize));
-        	}
-        	else {
-        		_rightMostP = _systemSize - (Math.abs(_rightMostP % _systemSize));
-        	}
-            
+        	while(_rightMostP >= (_systemSize/2)) {
+    			
+    			_rightMostP = (_rightMostP - _systemSize);
+    				
+    		}
+    		
+    		while(_rightMostP < (-_systemSize/2)) {
+    				
+    			_rightMostP = (_rightMostP + _systemSize);
+    				
+    		}
+			
+			if(_rightMostP >= 0) {
+				
+				_rightMostP = (_rightMostP * 2);
+				
+			}
+			else {
+				
+				_rightMostP = ((2*(-_rightMostP)) - 1);
+				
+			}
+			
         	if(passedRow.getCoeff(_rightMostP) > 0) {
         		_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(_rightMostP)));
         	}
@@ -206,18 +246,34 @@ public class InteractionMatrix {
         	//This bit is a 0, apply a creation operator to the rightmost operator momentum mode
         	//Complete the operator factor for this set of operators
         	
-        	if (_rightMostP >= 0) {
-        		_rightMostP = _systemSize - (Math.abs(_rightMostP % _systemSize));
-        	}
-        	else {
-        		_rightMostP = (Math.abs(_rightMostP % _systemSize));
-        	}
+        	_rightMostP = (_rightMostP * -1);
         	
-        	_rightMostP = Math.abs(_rightMostP % _systemSize);
+        	while(_rightMostP >= (_systemSize/2)) {
+    			
+    			_rightMostP = (_rightMostP - _systemSize);
+    				
+    		}
+    		
+    		while(_rightMostP < (-_systemSize/2)) {
+    				
+    			_rightMostP = (_rightMostP + _systemSize);
+    				
+    		}
+        	
+        	if(_rightMostP >= 0) {
+				
+				_rightMostP = (_rightMostP * 2);
+				
+			}
+			else {
+				
+				_rightMostP = ((2*(-_rightMostP)) - 1);
+				
+			}
+        	
         	_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(_rightMostP) + 1.0));
             passedRow.applyCreation(_rightMostP);
-            
-            
+               
         }
         
     }

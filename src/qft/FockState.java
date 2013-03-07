@@ -5,8 +5,11 @@ public class FockState {
     //Class for one of the members of the infinite Fock Space
     //includes two methods of indexing: one for quickly finding states or creating them,
     //one for ordering them in a way that is useful for Fourier analysis
+	
+	//Even coefficients refer to forward moving particles,
+	//odd coefficients refer to backward moving particles
     
-    private int[] _coeffs;
+    private Integer[] _coeffs;
     private int _systemSize;
     private double _epsilon;
     private double _mass;
@@ -19,7 +22,7 @@ public class FockState {
         _systemSize = systemSize;
         _epsilon = epsilon;
         _mass = mass;
-        _coeffs = new int[systemSize];
+        _coeffs = new Integer[systemSize];
         setAsVacuum();
         _isValid = true;
         
@@ -35,16 +38,16 @@ public class FockState {
         
     }
     
-    public int getCoeff(int x) {
+    public Integer getCoeff(int x) {
         
         //Gets the xth component of the state,
-        //returns -1 if x is outside the required range
+        //returns null if x is outside the required range
         
         if((x<_systemSize) && (x>=0)) {
             return _coeffs[x];
         }
         else {
-            return -1;
+            return null;
         }
         
     }
@@ -60,13 +63,13 @@ public class FockState {
         
     }
     
-    public int calcIndex() {
+    public Integer calcIndex() {
         
         //Calculates and returns the index for this Fock State
         
-        int index = 0;
-        int a;
-        int b;
+        long index = 0;
+        long a;
+        long b;
         
         for(int i=0; i<(_systemSize-1); i++) {
             
@@ -82,9 +85,12 @@ public class FockState {
             
             index = ((((a+b)*(a+b+1))/2) + b);
             
+            if(index > Integer.MAX_VALUE) 
+            	return null;
+            
         }
         
-        return index;
+        return (int)index;
         
     }
     
@@ -114,7 +120,9 @@ public class FockState {
     public void applyCreation(int p) {
         
         //Applies a creation operator for the pth momentum mode
-        //does nothing if p is outside the required range
+    	
+        //For even p this creates a forward moving particle
+    	//For odd p this creates a backwards moving particle
         
         if((p<_systemSize) && (p>=0)) {
             _coeffs[p]++;
@@ -127,6 +135,9 @@ public class FockState {
         //Applies an annihilation operator for the rth momentum mode
         //does nothing if r is outside the required range
         //If the annihilation operator destroys the state, set it to invalid
+    	
+    	//For even p this destroys a forward moving particle
+    	//For odd p this destroys a backwards moving particle
         
         if((r<_systemSize) && (r>=0)) {
         	
@@ -147,66 +158,7 @@ public class FockState {
         return _isValid;
         
     }
-        
-    public void incrementState() {
-        
-        //Increments the Fock State according to the rules laid out on p17
-        //This method is used to supply Fourier transforms with the coefficients in the correct order
-        
-        //First, find the last and second last non-zero numbers in the state
-        
-        int lastNumPos = 0;
-        int lastNumVal = _coeffs[0];
-        int scndLastNumPos = 0;
-        int scndLastNumVal = 0;
-        
-        for(int k=1; k<_systemSize; k++){
-            
-            if(_coeffs[k] != 0) {
-                scndLastNumPos = lastNumPos;
-                scndLastNumVal = lastNumVal;
-                lastNumPos = k;
-                lastNumVal = _coeffs[k];
-            }
-            
-        }
-        
-        if(lastNumPos != (_systemSize - 1)) {
-            
-            //If the last number is not at the end of the state, take one
-            //from it and place that one just ahead of it
-            
-            _coeffs[lastNumPos] = (lastNumVal - 1);
-            _coeffs[lastNumPos + 1] = 1;
-            
-        }
-        else {
-            
-            if(scndLastNumVal != 0) {
-                
-                //If the last number is at the end of the state (and we are not
-                //in the special case where that is the only number) then take
-                //one off the 2nd last number, add it to the last and place it
-                //just ahead of the 2nd last
-                
-                _coeffs[scndLastNumPos] = (scndLastNumVal - 1);
-                _coeffs[lastNumPos] = 0;
-                _coeffs[scndLastNumPos + 1] = (lastNumVal + 1);
-                
-            }
-            else {
-                
-                //In this special case, move to the start of the next set of
-                //state which includes one more particle
-                _coeffs[lastNumPos] = 0;
-                _coeffs[0] = lastNumVal + 1;
-                
-            }
-            
-        }
-        
-    }
-
+    
     public int getSystemSize() {
         
         //Gets the system size
@@ -254,7 +206,110 @@ public class FockState {
     	
     	//Returns the frequency of a particular momentum mode
     	
-    	return (Math.sqrt(((4/(Math.pow(epsilon, 2))) * Math.pow(Math.sin((Math.PI*(double)p)/((double)systemSize)),  2)) + Math.pow(mass, 2)));
+    	//First find the appropriate value to put in the formula (see p43)
+    	
+    	int mode = (int)Math.floor((p+1)/2);
+    	
+    	return (Math.sqrt(((4/(Math.pow(epsilon, 2))) * Math.pow(Math.sin((Math.PI*(double)mode)/((double)systemSize)),  2)) + Math.pow(mass, 2)));
+    	
+    }
+    
+    public static Integer getIndex1PState(int p, int systemSize, double epsilon, double mass) {
+    	
+    	//Epsilon and mass are not used in this class other than to construct the state
+    	
+    	//Gets the index of the one-particle state with a particle at 
+    	//the index p as required for the Fourier transform
+    	
+    	//Limit of p for forward moving particles calculated by rounding down (sysSize-1)/2
+    	//Minus one comes from starting index at zero, rounding down due to backwards particles
+    	//being indexed before their forward counterparts
+    	
+    	FockState state = new FockState(systemSize, epsilon, mass);
+    	
+    	//Check p is in the right range, if not return null
+    	
+    	if((p>=0) && (p<systemSize)) {
+    	
+    		if(p <= (int)Math.floor((systemSize-1)/2)) {
+    		
+    			//For p up to the limit create a forward moving particle
+    		
+    			state.setCoeff((2*p), 1);
+    		
+    		}
+    		else {
+    		
+    			//For p beyond the limit create a backward moving particle
+    			
+    			state.setCoeff(((2*(systemSize-p))-1), 1);
+    		
+    		}
+    	
+    	}
+    	else {
+    		
+    		return null;
+    		
+    	}
+    	
+    	return state.calcIndex();
+    	
+    }
+    
+    public static Integer getIndex2PState(int p, int q, int systemSize, double epsilon, double mass) {
+    	
+    	//Epsilon and mass are not used in this class other than to construct the state
+    	
+    	//Gets the index of the two-particle state with particles at the 
+    	//indexes p and q as required for the Fourier transform
+    	
+    	FockState state = new FockState(systemSize, epsilon, mass);
+    	
+    	//Perform the same analysis as the one-particle state twice
+    	
+    	//Check p and q are in the right range, if not return null
+    	
+    	if((p>=0) && (p<systemSize) && (q>=0) && (q<systemSize)) {
+    	
+    		if(p <= (int)Math.floor((systemSize-1)/2)) {
+    		
+    			//For p up to the limit create a forward moving particle
+    		
+    			state.applyCreation(2*p);
+    		
+    		}
+    		else {
+    		
+    			//For p beyond the limit create a backward moving particle
+    			
+    			state.applyCreation((2*(systemSize-p))-1);
+    		
+    		}
+    	    	
+        	if(q <= (int)Math.floor((systemSize-1)/2)) {
+        		
+        		//For q up to the limit create a forward moving particle
+        		
+        		state.applyCreation(2*q);
+        		
+        	}
+        	else {
+        		
+        		//For q beyond the limit create a backward moving particle
+
+        		state.applyCreation((2*(systemSize-q))-1);
+        		
+        	}
+    	
+    	}
+    	else {
+    		
+    		return null;
+    		
+    	}
+    	
+    	return state.calcIndex();
     	
     }
     

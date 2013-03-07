@@ -17,10 +17,10 @@ public class FockStateTest {
         double epsilon = 0.0000001;
         assertEquals(test1.getCoeff(7), 0, epsilon);
         assertEquals(test1.getCoeff(0), 0, epsilon);
-        assertEquals(test1.getCoeff(10), -1, epsilon);
+        assert(test1.getCoeff(10) == null);
         test1.setCoeff(3, 5);
         test1.setCoeff(10, 3);
-        assertEquals(test1.getCoeff(10), -1, epsilon);
+        assert(test1.getCoeff(10) == null);
         assertEquals(test1.getCoeff(3), 5, epsilon);
         test1.setAsVacuum();
         assertEquals(test1.getCoeff(3), 0, epsilon);
@@ -30,9 +30,9 @@ public class FockStateTest {
     }
 
     @Test
-    public void testCreatAndAnnih() {
+    public void testCreateAndAnnihil() {
         
-        //Tests creatin and annihilation operators (and validity checks)
+        //Tests creation and annihilation operators (and validity checks)
         
         FockState test2 = new FockState(13, 0.1, 1.0);
         double epsilon = 0.000001;
@@ -60,43 +60,6 @@ public class FockStateTest {
         
     }
     
-    @Test
-    public void testIncrement() {
-        
-        //Tests the state incrementation method in various cases
-        
-        FockState test3 = new FockState(5, 0.1, 1.0);
-        
-        test3.setCoeff(0, 5);
-        test3.incrementState();
-        assertEquals("simple check 1", test3.getCoeff(0), 4);
-        assertEquals("simple check 2", test3.getCoeff(1), 1);
-        test3.incrementState();
-        assertEquals("simple check 3", test3.getCoeff(0), 4);
-        assertEquals("simple check 4", test3.getCoeff(2), 1);
-        
-        test3.setAsVacuum();
-        test3.setCoeff(2, 2);
-        test3.setCoeff(4, 2);
-        test3.incrementState();
-        assertEquals("middle check 1", test3.getCoeff(2), 1);
-        assertEquals("middle check 2", test3.getCoeff(3), 3);
-        
-        test3.setAsVacuum();
-        test3.setCoeff(3, 2);
-        test3.setCoeff(4, 1);
-        test3.incrementState();
-        assertEquals("end check 1", test3.getCoeff(3), 1);
-        assertEquals("end check 2", test3.getCoeff(4), 2);
-        
-        test3.setAsVacuum();
-        test3.setCoeff(4, 2);
-        test3.incrementState();
-        assertEquals("particle increase check 1", test3.getCoeff(0), 3);
-        assertEquals("particle increase check 2", test3.getCoeff(4), 0);
-        
-    }
-
     @Test
     public void testIndexing() {
         
@@ -167,9 +130,9 @@ public class FockStateTest {
     	
     	FockState test9 = new FockState(6, 0.55, 2.2);
     	double epsilon = 0.0000001;
-    	test9.setCoeff(1, 1);
-    	test9.setCoeff(2, 3);
-    	test9.setCoeff(4, 2);
+    	test9.setCoeff(2, 1);
+    	test9.setCoeff(3, 2);
+    	test9.setCoeff(4, 3);
     	assertEquals(test9.calcEnergy(), 22.0617339, epsilon);
     	
     }
@@ -178,11 +141,40 @@ public class FockStateTest {
     public void testFreqCalc() {
     	
     	//Tests the static frequency calculation
+    	//The frequency calculation for two consecutive indexes 
+    	//(starting with an odd one) should be the same
     	
-    	double test10 = FockState.calcFrequency(4, 204, 0.15, 0.7);
+    	double test10 = FockState.calcFrequency(7, 204, 0.15, 0.7);
     	double epsilon = 0.000000001;
     	assertEquals(test10, 1.078764327, epsilon);
     	
+    	assertEquals(FockState.calcFrequency(1, 6, 0.2, 1.0), FockState.calcFrequency(2, 6, 0.2, 1.0), epsilon);
+    	
     }
-    
+   
+    @Test
+    public void testFourierGets() {
+
+    	double epsilon = 0.00000001;
+    	
+    	Integer onePIndex = FockState.getIndex1PState(2, 4, 0.1, 2.0);
+    	assertEquals(onePIndex, 20 ,epsilon);
+    	
+    	onePIndex = FockState.getIndex1PState(1, 4, 0.1, 2.0);
+    	assertEquals(onePIndex, 5 ,epsilon);
+    	
+    	onePIndex = FockState.getIndex1PState(3, 4, 0.1, 2.0);
+    	assertEquals(onePIndex, 2 ,epsilon);
+    	
+    	Integer twoPIndex = FockState.getIndex2PState(1, 1, 4, 0.1, 1.5);
+    	assertEquals(twoPIndex, 54 ,epsilon);
+    	
+    	twoPIndex = FockState.getIndex2PState(0, 3, 4, 0.1, 1.5);
+    	assertEquals(twoPIndex, 4 ,epsilon);
+    	
+    	twoPIndex = FockState.getIndex2PState(3, 0, 4, 0.1, 1.5);
+    	assertEquals(twoPIndex, 4 ,epsilon);
+    	
+    }
+
 }
