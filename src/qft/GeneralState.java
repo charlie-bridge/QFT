@@ -7,42 +7,42 @@ import java.util.Map.Entry;
 import uk.ac.cam.cal56.maths.Complex;
 import uk.ac.cam.cal56.qft.interactingtheory.Interaction;
 import uk.ac.cam.cal56.qft.interactingtheory.State;
+import uk.ac.cam.cal56.qft.interactingtheory.WavePacket;
 
 public class GeneralState implements State {
 
     // Class that represents a general state of the quantum system, and can
     // perform an integration step
 
-    private int                      _systemSize; // Number of discrete spatial points in the system
-    private double                   _epsilon;    // Distance between two adjacent points
-    private double                   _mass;       // Mass of the boson (phi^2 interaction strength)
-    private int                      _cutOffMom;  // Highest total Fock State momentum considered
-    private int                      _numStates;  // Total number of Fock States considered (caution,
-                                                   // index starts at 0)
-    private int                      _phiPow;     // Power of the interaction term
-    private InteractionMatrix        _interaction; // Interaction Matrix
-    private double                   _dt;         // Time step size
-    private double                   _time;       // Stores the system time
-    private Complex[]                _coeffDerivs;       // Fock state coefficient derivatives at
-                                                   // this point in time
-    private Complex[]                _coeffs;     // Fock state coefficients at this point in time
-    private double[]                 _frequencies;     // Frequencies of all of the states
+    private int                      _systemSize;   // Number of discrete spatial points in the system
+    private double                   _epsilon;      // Distance between two adjacent points
+    private double                   _mass;         // Mass of the boson (phi^2 interaction strength)
+    private int                      _cutOffMom;    // Highest total Fock State momentum considered
+    private int                      _numStates;    // Total number of Fock States considered (caution, index starts at 0)
+    private int                      _phiPow;       // Power of the interaction term
+    private InteractionMatrix        _interaction;  // Interaction Matrix
+    private double                   _dt;           // Time step size
+    private double                   _time;         // Stores the system time
+    private Complex[]                _coeffDerivs;  // Fock state coefficient derivatives at this point in time
+    private Complex[]                _coeffs;       // Fock state coefficients at this point in time
+    private double[]                 _frequencies;  // Frequencies of all of the states
 
-    private Map<Interaction, Double> _lambdas;    // Interaction strengths
+    private Map<Interaction, Double> _lambdas;      // Interaction strengths
 
-    private Complex[]                _nextCoeffs; // Required for integrator
+    private Complex[]                _nextCoeffs;   // Required for integrator
+    
+    private WavePacket               _wavePacket;   // User-set wavepacket
 
-    public GeneralState(int N, int Pmax, double m, double dx, double dt, Map<Interaction, Double> lambdas) {
+    public GeneralState(int N, int Pmax, double m, double dx, double dt, Map<Interaction, Double> lambdas, WavePacket wavePacket) {
 
         // Constructor for the general state
 
-        // TODO Pmax not used by my general state but phi power and
-        // cutoffMomentum needed, set to values for now
+        // TODO Pmax not used by my general state but cutoffMomentum needed, set to values for now
 
         _systemSize = N;
         _mass = m;
         _epsilon = dx;
-        _cutOffMom = 50;
+        _cutOffMom = 20;
         _numStates = (((_cutOffMom * (_cutOffMom + 1)) / 2) + 1);
         _phiPow = 3;
         _dt = dt;
@@ -72,7 +72,7 @@ public class GeneralState implements State {
 
         // Set the state to the vacuum
 
-        reset();
+        reset(wavePacket);
 
     }
 
@@ -243,7 +243,9 @@ public class GeneralState implements State {
             _coeffDerivs[i] = Complex.zero();
 
             for (Entry<Integer, Double> Hij : _interaction.getRow(i).entrySet()) {
+                
                 _coeffDerivs[i] = _coeffDerivs[i].plus(_coeffs[Hij.getKey()].times(Hij.getValue()));
+                
             }
 
             _coeffDerivs[i] = _coeffDerivs[i].times(_lambdas.get(Interaction.PHI_CUBED));
@@ -256,28 +258,6 @@ public class GeneralState implements State {
         }
 
         _nextCoeffs = next;
-
-    }
-
-    @Override
-    public void reset(int... particleMomenta) {
-
-        // Resets the general quantum state
-
-        _time = 0.0;
-        // _coeffs[0] = Complex.one();
-        _coeffs[0] = Complex.zero();
-        for (int i = 1; i < _numStates; i++) {
-            _coeffs[i] = Complex.zero();
-        }
-
-        _coeffs[FockState.getIndex1PState(1, _systemSize, _epsilon, _mass)] = new Complex(0.70710678, 0);
-        _coeffs[FockState.getIndex1PState(0, _systemSize, _epsilon, _mass)] = new Complex(0.5, 0);
-        _coeffs[FockState.getIndex1PState(2, _systemSize, _epsilon, _mass)] = new Complex(0.5, 0);
-
-        // Perform the first step
-
-        firstStep();
 
     }
 
@@ -397,7 +377,7 @@ public class GeneralState implements State {
         return returnVal;
     }
 
-    public double getRemainingProbability() {
+    public Double getRemainingProbability() {
         return 0.0;
     }
 
@@ -407,4 +387,34 @@ public class GeneralState implements State {
 
     }
 
+    @Override
+    public void reset() {
+        
+        // Reset stuff
+        
+        _coeffs = CoeffAdaptor.setCoeffs(_systemSize, _numStates, _wavePacket.getCoefficients((_systemSize + 1) * (_systemSize + 2) / 2));
+        
+        _time = 0.0;
+        firstStep();
+        
+    }
+
+    @Override
+    public void reset(WavePacket wavePacket) {
+        
+        // Reset stuff
+        
+        _wavePacket = wavePacket;
+        reset();
+        
+    }
+
+    @Override
+    public int getN() {
+        
+        // Gets the system size
+        
+        return _systemSize;
+    }
+    
 }

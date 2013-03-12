@@ -11,6 +11,7 @@ import org.junit.Test;
 import qft.GeneralState;
 import uk.ac.cam.cal56.maths.Complex;
 import uk.ac.cam.cal56.qft.interactingtheory.Interaction;
+import uk.ac.cam.cal56.qft.interactingtheory.impl.MomentumWavePacket;
 
 public class GeneralStateTest {
 
@@ -21,7 +22,7 @@ public class GeneralStateTest {
 	public void setUp() throws Exception {
 		
 		lambdas.put(Interaction.PHI_CUBED, 0.5);
-		_genState = new GeneralState(6, 3, 1.1, 0.1, 0.1, lambdas);
+		_genState = new GeneralState(6, 3, 1.1, 0.1, 0.1, lambdas, new MomentumWavePacket(6));
 		
 	}
 
