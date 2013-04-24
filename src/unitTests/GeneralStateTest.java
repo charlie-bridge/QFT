@@ -10,8 +10,8 @@ import org.junit.Test;
 
 import qft.GeneralState;
 import uk.ac.cam.cal56.maths.Complex;
-import uk.ac.cam.cal56.qft.interactingtheory.Interaction;
-import uk.ac.cam.cal56.qft.interactingtheory.impl.MomentumWavePacket;
+import uk.ac.cam.cal56.qft.Interaction;
+import uk.ac.cam.cal56.qft.impl.MomentumWavePacket;
 
 public class GeneralStateTest {
 
@@ -39,7 +39,7 @@ public class GeneralStateTest {
 		_genState.step();
 		assertEquals(_genState.getTime(),  0.6, epsilon);
 		Complex zerop;
-		zerop = _genState.get0P(); 
+		zerop = _genState.getVacuum(); 
 		Complex[] onep;
 		onep = _genState.get1PMom();
 		Complex[][] twop;

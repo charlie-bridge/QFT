@@ -120,5 +120,39 @@ public class InteractionMatrixTest {
 		assertEquals(test6.getRow(6).get(3), 0.6763228326, epsilon);
 		
 	}
+
+	@Test
+	public void testSymmetric() {
+	    
+	    //The interaction matrix should be symmetric
+	    
+	    int numstates1 = 50;
+	    int size1 = 10;
+	    int numstates2 = 60;
+        int size2 = 23;
+	    InteractionMatrix test7 = new InteractionMatrix(size1, 0.15, 1.1, numstates1, 3);
+	    test7.calcMatrix();
+	    double epsilon = 0.00000000000001;
+	    
+	    for(int i=0; i<numstates1; i++) {
+	        for(int j=i; j<numstates1; j++) {
+	            if(test7.getRow(i).get(j) != null) {
+	                assertEquals(test7.getRow(i).get(j), test7.getRow(j).get(i), epsilon);
+	            }
+	        }
+	    }
+	    
+	    InteractionMatrix test8 = new InteractionMatrix(size2, 0.04, 0.978, numstates2, 4);
+	    test8.calcMatrix();
+	    
+	    for(int i=0; i<numstates2; i++) {
+            for(int j=i; j<numstates2; j++) {
+                if(test8.getRow(i).get(j) != null) {
+                    assertEquals(test8.getRow(i).get(j), test8.getRow(j).get(i), epsilon);
+                }
+            }
+        }
+	    
+	}
 	
 }

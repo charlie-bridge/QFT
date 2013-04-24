@@ -133,11 +133,12 @@ public class InteractionMatrix {
     	
     	//PUBLIC FOR TESTING ONLY, DO NOT USE OUTSIDE THIS CLASS
         
-        //Applies operators to the passed row FockState according to the integer i
+        //Applies operators to the passed row FockState according to the integers in momenta and opTypes
         //We have 2^phiPow possibilities for the operators - so use binary
         //For each 1 bit use annihilation, for each 0 bit use creation (on the passed <bra|)
+        //((Note: this means a 1 bit implies the operator is a creation operator))
         //The rightmost operator is special, its momentum is set by the others
-    	//this is stored outside this method for use later
+        //this is stored outside this method for use later
         
         _rightMostP = 0;
         _operatorFactors = 1.0;
@@ -153,7 +154,10 @@ public class InteractionMatrix {
             	//If this operation invalidates the state set the factor to zero
                 
                 if(passedRow.getCoeff(momenta[i]) > 0) {
+
             		_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(momenta[i])));
+            		_operatorFactors = (_operatorFactors * Math.sqrt(2.0*FockState.calcFrequency(momenta[i], _systemSize, _epsilon, _mass)*_systemSize*_epsilon));
+                    
             	}
                 else {
                 	_operatorFactors = 0.0;
@@ -164,14 +168,10 @@ public class InteractionMatrix {
                 //The rightmost momentum is set by the momentum just used
                 
                 if((momenta[i]%2) == 0) {
-                	
-                	_rightMostP = _rightMostP - (int)Math.floor((momenta[i]+1)/2);
-                	
+                	_rightMostP = _rightMostP - (int)Math.floor((momenta[i]+1)/2);               	
                 }
-                else {
-                	
-                	_rightMostP = _rightMostP + (int)Math.floor((momenta[i]+1)/2);
-                	
+                else {                	
+                	_rightMostP = _rightMostP + (int)Math.floor((momenta[i]+1)/2);                	
                 }
                 
             }
@@ -181,19 +181,17 @@ public class InteractionMatrix {
             	//Update the running operator factor and rightmost operator momentum
                 
             	_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(momenta[i]) + 1.0));
+            	_operatorFactors = (_operatorFactors * Math.sqrt(2.0*FockState.calcFrequency(momenta[i], _systemSize, _epsilon, _mass)*_systemSize*_epsilon));      
+                
                 passedRow.applyCreation(momenta[i]);
                 
                 //The rightmost momentum is set by the momentum just used
                 
-                if((momenta[i]%2) == 0) {
-                	
-                	_rightMostP = _rightMostP + (int)Math.floor((momenta[i]+1)/2);
-                	
+                if((momenta[i]%2) == 0) {               	
+                	_rightMostP = _rightMostP + (int)Math.floor((momenta[i]+1)/2);                	
                 }
-                else {
-                	
-                	_rightMostP = _rightMostP - (int)Math.floor((momenta[i]+1)/2);
-                	
+                else {                	
+                	_rightMostP = _rightMostP - (int)Math.floor((momenta[i]+1)/2);                	
                 }
                 
             }
@@ -208,31 +206,24 @@ public class InteractionMatrix {
         	//Complete the operator factor for this set of operators
         	//If this operation invalidates the state set the factor to zero
         	
-        	while(_rightMostP >= (_systemSize/2)) {
-    			
-    			_rightMostP = (_rightMostP - _systemSize);
-    				
-    		}
-    		
-    		while(_rightMostP < (-_systemSize/2)) {
-    				
-    			_rightMostP = (_rightMostP + _systemSize);
-    				
-    		}
-			
-			if(_rightMostP >= 0) {
-				
-				_rightMostP = (_rightMostP * 2);
-				
+        	while(_rightMostP >= (_systemSize/2)) {   			
+    			_rightMostP = (_rightMostP - _systemSize);    				
+    		}    		
+    		while(_rightMostP < (-_systemSize/2)) {    				
+    			_rightMostP = (_rightMostP + _systemSize);    				
+    		}			
+			if(_rightMostP >= 0) {				
+				_rightMostP = (_rightMostP * 2);				
 			}
-			else {
-				
-				_rightMostP = ((2*(-_rightMostP)) - 1);
-				
+			else {				
+				_rightMostP = ((2*(-_rightMostP)) - 1);				
 			}
 			
         	if(passedRow.getCoeff(_rightMostP) > 0) {
+        	    
         		_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(_rightMostP)));
+        		_operatorFactors = (_operatorFactors * Math.sqrt(2.0*FockState.calcFrequency(_rightMostP, _systemSize, _epsilon, _mass)*_systemSize*_epsilon));
+        		
         	}
         	else {
         		_operatorFactors = 0.0;
@@ -248,30 +239,22 @@ public class InteractionMatrix {
         	
         	_rightMostP = (_rightMostP * -1);
         	
-        	while(_rightMostP >= (_systemSize/2)) {
-    			
-    			_rightMostP = (_rightMostP - _systemSize);
-    				
-    		}
-    		
-    		while(_rightMostP < (-_systemSize/2)) {
-    				
-    			_rightMostP = (_rightMostP + _systemSize);
-    				
-    		}
-        	
-        	if(_rightMostP >= 0) {
-				
-				_rightMostP = (_rightMostP * 2);
-				
+        	while(_rightMostP >= (_systemSize/2)) {   			
+    			_rightMostP = (_rightMostP - _systemSize);    				
+    		}    		
+    		while(_rightMostP < (-_systemSize/2)) {   				
+    			_rightMostP = (_rightMostP + _systemSize);    				
+    		}       	
+        	if(_rightMostP >= 0) {				
+				_rightMostP = (_rightMostP * 2);				
 			}
-			else {
-				
-				_rightMostP = ((2*(-_rightMostP)) - 1);
-				
+			else {				
+				_rightMostP = ((2*(-_rightMostP)) - 1);				
 			}
         	
         	_operatorFactors = (_operatorFactors * Math.sqrt(passedRow.getCoeff(_rightMostP) + 1.0));
+        	_operatorFactors = (_operatorFactors * Math.sqrt(2.0*FockState.calcFrequency(_rightMostP, _systemSize, _epsilon, _mass)*_systemSize*_epsilon));
+        	
             passedRow.applyCreation(_rightMostP);
                
         }
@@ -285,13 +268,13 @@ public class InteractionMatrix {
     	
     	//WATCH OUT FOR: Because calcMatrix goes through the rows in order, they will be created in order
     	
-    	double maElVal = (_epsilon * Math.pow((_systemSize*_epsilon * 2.0), -(_phiPow/2.0)) * (1.0/Factorial.calc(_phiPow)));
+    	double maElVal = (_epsilon * Math.pow((_systemSize*_epsilon * 2.0), -(_phiPow)) * (1.0/Factorial.calc(_phiPow)));
     	maElVal = (maElVal * _operatorFactors);
-    	maElVal = (maElVal * Math.pow(FockState.calcFrequency(_rightMostP, _systemSize, _epsilon, _mass), -0.5));
+    	maElVal = (maElVal / FockState.calcFrequency(_rightMostP, _systemSize, _epsilon, _mass));
     	
     	for(int i=0; i<(_phiPow-1); i++) {
     		
-    		maElVal = (maElVal * Math.pow(FockState.calcFrequency(momenta[i], _systemSize, _epsilon, _mass), -0.5));
+    		maElVal = (maElVal / FockState.calcFrequency(momenta[i], _systemSize, _epsilon, _mass));
     		
     	}
     	
