@@ -188,7 +188,7 @@ public class FockState {
     	
     	//Returns the energy of this Fock State
     	
-    	double energy = 0;
+    	double energy = 0.0;
     	
     	for(int i=0; i<_systemSize; i++) {
     		

@@ -268,7 +268,7 @@ public class InteractionMatrix {
     	
     	//WATCH OUT FOR: Because calcMatrix goes through the rows in order, they will be created in order
     	
-    	double maElVal = (_epsilon * Math.pow((_systemSize*_epsilon * 2.0), -(_phiPow)) * (1.0/Factorial.calc(_phiPow)));
+    	double maElVal = (Math.pow((_systemSize*_epsilon), -(_phiPow-1)) * Math.pow(2.0, -_phiPow) * (1.0/Factorial.calc(_phiPow)));
     	maElVal = (maElVal * _operatorFactors);
     	maElVal = (maElVal / FockState.calcFrequency(_rightMostP, _systemSize, _epsilon, _mass));
     	

@@ -1,7 +1,9 @@
 package qft;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -23,24 +25,27 @@ public class GeneralState implements State {
     private int                      _numStates;    // Total number of Fock States considered (caution, index starts at 0)
     private double                   _dt;           // Time step size
     private double                   _time;         // Stores the system time
-    //private int                      _phiPow;       // Power of the interaction term
     
     private InteractionMatrix        _interaction2; // Interaction Matrix for phi^2
     private InteractionMatrix        _interaction3; // Interaction Matrix for phi^3
     private InteractionMatrix        _interaction4; // Interaction Matrix for phi^4
-    private double[]                 _frequencies;  // Frequencies of all of the state
+    private double[]                 _frequencies;  // Frequencies of all of the states
     private Map<Interaction, Double> _lambdas;      // Interaction strengths
     
     private Complex[]                _coeffDerivs;  // Fock state coefficient derivatives at this point in time
     private Complex[]                _coeffs;       // Fock state coefficients at this point in time
-    private Complex[]                _nextCoeffs;   // Required for integrator
+    private Complex[]                _nextCoeffs;   // Required for leapfrog method
     
     private WavePacket               _wavePacket;   // User-set wavepacket
     
     private DataFile                 _dataFile;     // Data file to write to
+    private String                   _fileName = "probConserv";  // Filename
     
     private double                   _1PSum;        // Used to calculate remaining probability
     private double                   _2PSum;        // Used to calculate remaining probability
+    
+    private List<Complex[]>          _eigenStates;  // Eigenstate storage
+    private double                   _tau;          // Used in Power Iteration method
 
     public GeneralState(int N, int Pmax, double m, double dx, double dt, Map<Interaction, Double> lambdas, WavePacket wavePacket) throws IOException {
 
@@ -54,15 +59,12 @@ public class GeneralState implements State {
         _cutOffMom = 40;
         _numStates = (((_cutOffMom * (_cutOffMom + 1)) / 2) + 1);
         _dt = dt;
-        
-        //_phiPow = 3;
-
-        _lambdas = new HashMap<Interaction, Double>();
 
         _interaction2 = new InteractionMatrix(_systemSize, _epsilon, _mass, _numStates, 2);
         _interaction3 = new InteractionMatrix(_systemSize, _epsilon, _mass, _numStates, 3);
         _interaction4 = new InteractionMatrix(_systemSize, _epsilon, _mass, _numStates, 4);
         _coeffs = new Complex[_numStates];
+        _nextCoeffs = new Complex[_numStates];
         _coeffDerivs = new Complex[_numStates];
         _frequencies = new double[_numStates];
         
@@ -92,14 +94,20 @@ public class GeneralState implements State {
 
         }
 
-        // Set the state to the vacuum
+        // Set the state
 
         setWavePacket(wavePacket);
         
         //Set up file to write to
         
-        _dataFile = new DataFile("test");
+        _dataFile = new DataFile(_fileName);  
         
+        //Set up eigenstate storage
+        
+        _eigenStates = new ArrayList<Complex[]>();
+        
+        
+        //testPhi2AsMass();
 
     }
 
@@ -108,10 +116,11 @@ public class GeneralState implements State {
 
         // Sets the interaction strengths
 
-        _lambdas.put(interaction, lambda);
+        if(_lambdas.containsKey(interaction)) {
+            _lambdas.put(interaction, lambda);
+        }
 
-        // Perform the first Euler step again because the next coefficients are
-        // no longer appropriate
+        // Perform the first Euler step again because the next coefficients are no longer valid
 
         firstStep();
 
@@ -123,11 +132,10 @@ public class GeneralState implements State {
         // Called in Carl's framework code, abstract away to allow multiple
         // integrators
 
-        //newIntegrator();
         //semiImplicitEuler();
-        //leapfrog();
+        leapfrog();
         //nystrom();
-        firstEuler();
+        //firstEuler();
         
         try {
             if((((int)(_time/_dt))%1000) == 0) {
@@ -152,7 +160,7 @@ public class GeneralState implements State {
 
     }
 
-    private Complex[] applyHamiltonian(Complex[] vector) {
+    private Complex[] applyHamiltonian(Complex[] vector, boolean withMinusI) {
         
         //Applies the Hamiltonian to the passed vector of coefficients
         
@@ -162,7 +170,7 @@ public class GeneralState implements State {
 
             returnVector[i] = Complex.zero();
 
-            if(_lambdas.get(Interaction.PHI_SQUARED) != null) {
+            if(_lambdas.containsKey(Interaction.PHI_SQUARED)) {
                 for (Entry<Integer, Double> Hij : _interaction2.getRow(i).entrySet()) {
                     
                     returnVector[i] = returnVector[i].plus(vector[Hij.getKey()].times(Hij.getValue()*_lambdas.get(Interaction.PHI_SQUARED)));
@@ -170,7 +178,7 @@ public class GeneralState implements State {
                 }
             }
             
-            if(_lambdas.get(Interaction.PHI_CUBED) != null) {
+            if(_lambdas.containsKey(Interaction.PHI_CUBED)){
                 for (Entry<Integer, Double> Hij : _interaction3.getRow(i).entrySet()) {
                     
                     returnVector[i] = returnVector[i].plus(vector[Hij.getKey()].times(Hij.getValue()*_lambdas.get(Interaction.PHI_CUBED)));
@@ -178,19 +186,21 @@ public class GeneralState implements State {
                 }
             }
             
-            if(_lambdas.get(Interaction.PHI_FOURTH) != null) {
+            if(_lambdas.containsKey(Interaction.PHI_FOURTH)) {
                 for (Entry<Integer, Double> Hij : _interaction4.getRow(i).entrySet()) {
-                    
-                    returnVector[i] = returnVector[i].plus(_nextCoeffs[Hij.getKey()].times(Hij.getValue()*_lambdas.get(Interaction.PHI_FOURTH)));
+                        
+                    returnVector[i] = returnVector[i].plus(vector[Hij.getKey()].times(Hij.getValue()*_lambdas.get(Interaction.PHI_FOURTH)));
                     
                 }
             }
             
             returnVector[i] = returnVector[i].plus(vector[i].times(_frequencies[i])); 
             
-            //MAYBE DONT HAVE THE PHASE HERE
+            //Check for multiplying being minus i
             
-            returnVector[i] = returnVector[i].timesi(-1);
+            if(withMinusI == true) {
+                returnVector[i] = returnVector[i].timesi(-1);
+            }
             
         }
         
@@ -205,8 +215,8 @@ public class GeneralState implements State {
         Complex[] firstHalf = new Complex[_numStates];
         Complex[] secondHalf = new Complex[_numStates];
         
-        firstHalf = applyHamiltonian(_coeffs);
-        secondHalf = applyHamiltonian(firstHalf);
+        firstHalf = applyHamiltonian(_coeffs, true);
+        secondHalf = applyHamiltonian(firstHalf, true);
         
         for(int i=0; i<_numStates; i++) {
             
@@ -232,7 +242,7 @@ public class GeneralState implements State {
             store[i] = _nextCoeffs[i].times(1.0);
         }
         
-        addor = applyHamiltonian(_nextCoeffs);
+        addor = applyHamiltonian(_nextCoeffs, true);
         
         for(int i=0; i<_numStates; i++) {
             
@@ -258,8 +268,8 @@ public class GeneralState implements State {
             store[i] = _nextCoeffs[i].times(1.0);
         }
         
-        firstHalf = applyHamiltonian(_nextCoeffs);
-        secondHalf = applyHamiltonian(_coeffs);
+        firstHalf = applyHamiltonian(_nextCoeffs, true);
+        secondHalf = applyHamiltonian(_coeffs, true);
         
         for(int i=0; i<_numStates; i++) {
             
@@ -277,7 +287,7 @@ public class GeneralState implements State {
     
     private void firstEuler() {
         
-        _coeffDerivs = applyHamiltonian(_coeffs);
+        _coeffDerivs = applyHamiltonian(_coeffs, true);
         
         for(int i=0; i<_numStates; i++) {
             
@@ -291,6 +301,7 @@ public class GeneralState implements State {
     
     private void newIntegrator() {
 
+        //OBSOLETE
         // Calculate the derivatives
 
         for (int i = 0; i < _numStates; i++) {
@@ -349,9 +360,25 @@ public class GeneralState implements State {
         _time += _dt;
 
     }
-
+   
     private void firstStep() {
+        
+        //Perform a first order Euler step to calculate the second set of coefficients for the leapfrog method
+        
+        _coeffDerivs = applyHamiltonian(_coeffs, true);
+        
+        for(int i=0; i<_numStates; i++) {
+            
+            _nextCoeffs[i] = _coeffs[i].plus(_coeffDerivs[i].times(_dt));
+            
+        }
+        
+        _time += _dt;
+    }
+    
+    private void firstStepOLD() {
 
+        //OBSOLETE
         // Calculates a first Euler step
 
         Complex[] next = new Complex[_numStates];
@@ -407,7 +434,7 @@ public class GeneralState implements State {
     @Override
     public Complex getVacuum() {
 
-        // Gets the zero-particle state magnitude
+        // Gets the zero-particle state coefficient
 
         return _coeffs[0];
                 
@@ -418,7 +445,7 @@ public class GeneralState implements State {
 
         _1PSum = 0.0;
         
-        // Gets the one-particle state momenta magnitudes
+        // Gets the one-particle state momenta coefficients
 
         Complex[] onePMomMags = new Complex[_systemSize];
         Integer index = 0;
@@ -456,7 +483,7 @@ public class GeneralState implements State {
         
         _2PSum = 0.0;
 
-        // Gets the two-particle momenta magnitudes
+        // Gets the two-particle momenta coefficients
 
         Complex[][] twoPMomMags = new Complex[_systemSize][_systemSize];
         Integer index = 0;
@@ -507,20 +534,15 @@ public class GeneralState implements State {
 
     public double getModSquared() {
 
-        // Returns the sum of the complex coefficient's moduli
+        // Returns the sum of the complex coefficient's moduli squared
 
         double returnVal = 0.0;
         
         FockState state = new FockState(_systemSize, _mass, _epsilon);
 
         for (int i = 0; i < _numStates; i++) {
-            
-            
+               
             state.setAsIndex(i);
-            
-            
-            //returnVal += (_coeffs[i].modSquared() * (Math.pow(state.norm(), 2.0)) * 2 * Math.PI * (_epsilon/_systemSize)));;
-            
             
             returnVal += (_coeffs[i].modSquared());
 
@@ -534,8 +556,8 @@ public class GeneralState implements State {
         double sum012;
         sum012 = _coeffs[0].modSquared() + _1PSum + _2PSum;
         
-        return (1-sum012)
-                ;
+        return (1-sum012);
+        
     }
 
     public void setTimeStep(double dt) {
@@ -552,6 +574,7 @@ public class GeneralState implements State {
         _coeffs = CoeffAdaptor.setCoeffs(_systemSize, _numStates, _wavePacket.getCoefficients((_systemSize + 1) * (_systemSize + 2) / 2));
         
         _time = 0.0;
+           
         firstStep();
         
     }
@@ -574,17 +597,46 @@ public class GeneralState implements State {
         return _systemSize;
     }
     
-    private double getTotalEnergy() {
+    public double getTotalEnergy(){
         
-        //Returns the state's total energy
+        return getTotalStateEnergy(null);
+        
+    }
+    
+    private double getTotalStateEnergy(Complex[] state) {
+        
+        //Returns the state's total energy, or a specific state if one is supplied
         
         double energy = 0.0;
+        double imagPart = 0.0;
+        
+        Complex[] hammedVector = new Complex[_numStates];
+        
+        if(state == null) {
+            hammedVector = applyHamiltonian(_coeffs, false);
+        }
+        else {
+            hammedVector = applyHamiltonian(state, false);
+        }
         
         for(int i=0; i<_numStates; i++) {
             
-            energy += (_coeffs[i].modSquared()*_frequencies[i]);
-            
+            if(state == null) {
+                energy += ((_coeffs[i].conj()).times(hammedVector[i])).real();
+            }
+            else {
+                energy += ((state[i].conj()).times(hammedVector[i])).real();
+            }
         }
+        
+        //TODO
+        //double zp = 0.0;
+        //for(int i=0; i<_systemSize; i++) {
+        //    zp += FockState.calcFrequency(i, _systemSize, _epsilon, _mass);
+        //}
+        //zp=(zp/2);
+        
+        //return (energy +zp);
         
         return energy;
         
@@ -594,11 +646,275 @@ public class GeneralState implements State {
         
         //Writes something to file
         
-        Double[] line = new Double[2];
+        Double[] line = new Double[3];
         line[0] = _time;
-        line[1] = getTotalEnergy();
+        line[1] = getModSquared();
+        line[2] = getTotalStateEnergy(null);
+        
         _dataFile.writeLine(line);
         
     }
     
+    private Complex[] findState(int stateNumber) {
+        
+        //Uses the Power Law method to find an eigenstate state of the full Hamiltonian
+        //For stateNumber=0 find the ground state
+        //For stateNumber>0 use the previously found states to find the stateNumber th eigenstate
+        
+        //Find the largest eigenvaue to ensure fastest convergence
+        
+        if(stateNumber == 0) {
+            double largest = findLargestEval();
+            _tau = Math.ceil(largest);
+        }
+        
+        //Set the initial vector
+        
+        Complex[] vector1 = new Complex[_numStates];
+        Complex[] vector2 = new Complex[_numStates];
+        for(int i=0; i<_numStates; i++) {
+            if(i<10) {
+                vector1[i] = Complex.one().divide(Math.sqrt(10.0));
+            }
+            else{
+                vector1[i] = Complex.zero();
+            }
+        }
+        
+        //Set the tolerance value and maximum number of iterations
+        
+        double tolerance = 1e-11;
+        int maxIterations = 100000;
+        double norm = 0.0;
+        int number = 0;
+        double difference;
+        double eigenVecAmount;
+        boolean flag = true;
+        
+        //Repeat the algorithm until the tolerance is met or the maximum number of iterations is hit
+        
+        while(flag && (number<maxIterations)) {
+              
+            //Remove all the eigenvector components of the state corresponding to
+            //eigenvectors found with eigenvalues lower than this one
+            
+            for(int j=0; j<stateNumber; j++){
+                
+                eigenVecAmount = dotProduct(_eigenStates.get(j), vector1);
+                
+                for(int k=0; k<_numStates; k++) {
+                    
+                    vector1[k] = vector1[k].minus((_eigenStates.get(j))[k].times(eigenVecAmount)); 
+                    
+                }
+                
+                //Renormalise each time
+                
+                norm = normVector(vector1, null);
+                
+                for(int k=0; k<_numStates; k++) {
+                    
+                    vector1[k] = vector1[k].divide(norm);
+                    
+                }
+                
+            }      
+            
+            //Apply the algorithm
+            
+            vector2 = applyHamiltonian(vector1, false);
+            
+            for(int i=0; i<_numStates; i++) {
+                vector2[i] = (vector1[i].times(_tau)).minus(vector2[i]);
+            }
+            
+            norm = normVector(vector2, null);
+            
+            for(int i=0; i<_numStates; i++) {
+                vector2[i] = vector2[i].divide(norm);
+            }
+            
+            //Determine the change in vector caused by the algorithm for tolerance check
+            
+            difference = normVector(vector1, vector2);
+            
+            if(difference<tolerance) {
+                flag = false;
+            }
+            
+            //Prepare for next iteration
+            
+            vector1 = vector2;
+            
+            number++;
+            
+            
+            if(number%1000 == 0) {
+                System.out.println(number);
+                System.out.println(vector2[0] + " " + vector2[1] + " " + vector2[2] + " " + vector2[3] + " " + vector2[4] + " " + vector2[5]);
+            }
+            
+        }
+        
+        //Add this eigenstate to the stored list and return it
+        
+        _eigenStates.add(stateNumber, vector2);        
+        
+        
+        System.out.println(vector2[0] + " " + vector2[1] + " " + vector2[2] + " " + vector2[3] + " " + vector2[4] + " " + vector2[5]);
+        
+        
+        return vector2;
+        
+    }
+    
+    private double findLargestEval() {
+        
+        //Finds the largest eigenvalue of the full Hamiltonian using the simple power iteration method
+        
+        Complex[] vector1 = new Complex[_numStates];
+        Complex[] vector2 = new Complex[_numStates];
+        
+        for(int i=0; i<_numStates; i++) {
+           vector1[i] = Complex.zero();
+        }
+        
+        vector1[_numStates-1] = Complex.one();
+        
+        double tolerance = 0.00000000001;
+        double norm = 0.0;
+        int number = 0;
+        double difference;
+        boolean flag = true;
+        
+        while(flag && (number<100000)) {
+            
+            vector2 = applyHamiltonian(vector1, false);
+            
+            norm = normVector(vector2, null);
+            
+            for(int i=0; i<_numStates; i++) {
+                vector2[i] = vector2[i].divide(norm);
+            }
+            
+            difference = normVector(vector1, vector2);
+            
+            if(difference<tolerance) {
+                flag = false;
+            }
+            
+            vector1 = vector2;
+            
+            number++;
+            
+        }
+        
+        return normVector(applyHamiltonian(vector2, false), null);
+        
+    }
+    
+    private double dotProduct(Complex[] vec1, Complex[] vec2) {
+        
+        //Returns the dot product of two vectors
+        
+        double returnval = 0.0;
+        Complex returnComp = Complex.zero();
+        
+        for(int i=0; i<_numStates; i++) {
+            returnComp = returnComp.plus(((vec1[i].conj()).times(vec2[i])));
+        }
+        
+        //Make sure the sign is not lost
+        
+        int sign = (int)(returnComp.real()/Math.abs(returnComp.real()));
+        returnval = ((returnComp.mod())*(double)(sign));
+        return returnval;
+        
+    }
+    
+    public void setToGroundState() {
+        
+        //Sets the system to the ground state
+        
+        _coeffs = findState(0);
+        
+    }
+    
+    private double normVector(Complex[] vector1, Complex[] vector2) {
+        
+        //Returns the norm of the vector1 if no vector2 is supplied
+        //Returns the norm of the difference between the vectors if both are supplied
+        
+        double returnValue = 0.0;
+        
+        if(vector2 == null) {
+            for(int i=0; i<_numStates; i++) {
+                returnValue += vector1[i].modSquared();
+            }
+        }
+        else {
+            for(int i=0; i<_numStates; i++) {
+                returnValue += (vector1[i].minus(vector2[i])).modSquared();
+            }
+        }
+        
+        returnValue = Math.sqrt(returnValue);
+        
+        return returnValue;
+        
+    }
+    
+    private void writeBasisEnergies() throws IOException {
+        
+        //Writes the basis state energies to file in order of index
+        
+        Complex[] basisState = new Complex[_numStates];
+        Double[] energy = new Double[1];
+        
+        for(int i=0; i<_numStates; i++) {
+            
+            for(int j=0; j<_numStates; j++) {
+                basisState[j] = Complex.zero();            
+            }
+            basisState[i] = Complex.one();
+            
+            energy[0] = getTotalStateEnergy(basisState);
+            
+            _dataFile.writeLine(energy);
+       
+        }
+        
+    }
+
+    private void testPhi2AsMass() throws IOException {
+        
+        //Produces the ground state energy as a function of lambda2
+        
+        //Set lambda3 and lambda4 to zero
+        
+        _lambdas.put(Interaction.PHI_CUBED, null);
+        _lambdas.put(Interaction.PHI_FOURTH, null);
+        _interaction2.calcMatrix();
+        
+        //For each value of _lambda compute the ground state energy and print
+        
+        Double data[] = new Double[2];
+        
+        for(int i=0; i<7; i++) {
+            
+            //data[0] = Math.pow(10.0, (i-5));
+            data[0] = Math.pow(10.0, -2);
+            _lambdas.put(Interaction.PHI_SQUARED, data[0]);
+            
+            for(int x=0; x<10; x++) {
+                _coeffs = findState(x);   
+                data[1] = getTotalStateEnergy(_coeffs);
+                _dataFile.writeLine(data);
+            }
+            
+        }
+        
+
+    }
+
 }
