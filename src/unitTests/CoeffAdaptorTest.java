@@ -11,7 +11,7 @@ public class CoeffAdaptorTest {
     @Test
     public void test() {
 
-        //Tests the static function
+        // Tests the static function
         
         Complex[] passIn = new Complex[10];
         for(int i=0; i<10; i++) {

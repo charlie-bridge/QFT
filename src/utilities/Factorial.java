@@ -1,6 +1,9 @@
 package utilities;
 
 public class Factorial {
+    
+    // Calculates the factorial of a number
+    // Not particularly hardy, intended for low numbers, use with care.
 	
 	private int _value;
 	
@@ -12,7 +15,7 @@ public class Factorial {
 	
 	public int getValue() {
 		
-		//Gets the value
+		// Gets the value
 		
 		return _value;
 		
@@ -20,14 +23,11 @@ public class Factorial {
 	
 	public static int calc(int n) {
 		
-		//Calculates the value of n factorial
+		// Calculates the value of n factorial
 		
 		int factorial = 1;
-
-		for(int i=1; i<=n; i++) {
-			
-			factorial = (factorial * i);
-			
+		for(int i=1; i<=n; i++) {			
+			factorial = (factorial * i);			
 		}
 		
 		return factorial;

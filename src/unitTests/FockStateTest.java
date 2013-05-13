@@ -11,7 +11,7 @@ public class FockStateTest {
     @Test
     public void testSetUpAndGet() {
         
-        //Test constructor, setting as vacuum, setters and getters
+        // Test constructor, setting as vacuum, setters and getters
         
         FockState test1 = new FockState(10, 0.1, 1.0);
         double epsilon = 0.0000001;
@@ -32,7 +32,7 @@ public class FockStateTest {
     @Test
     public void testCreateAndAnnihil() {
         
-        //Tests creation and annihilation operators (and validity checks)
+        // Tests creation and annihilation operators (and validity checks)
         
         FockState test2 = new FockState(13, 0.1, 1.0);
         double epsilon = 0.000001;
@@ -63,7 +63,7 @@ public class FockStateTest {
     @Test
     public void testIndexing() {
         
-        //Tests the setting of a state according to index and calculating index according to state
+        // Tests the setting of a state according to index and calculating index according to state
         
         double epsilon = 0.000001;
         FockState test4 = new FockState(2, 0.1, 1.0);
@@ -111,7 +111,7 @@ public class FockStateTest {
     @Test
     public void testMakeSame() {
         
-        //Tests the state comparison method
+        // Tests the state comparison method
         
         FockState test7 = new FockState(65, 0.1, 1.0);
         FockState test8 = new FockState(65, 0.1, 1.0);
@@ -126,7 +126,7 @@ public class FockStateTest {
     @Test
     public void testEnergyCalc() {
     	
-    	//Tests the energy calculation method
+    	// Tests the energy calculation method
     	
     	FockState test9 = new FockState(6, 0.55, 2.2);
     	double epsilon = 0.0000001;
@@ -140,9 +140,9 @@ public class FockStateTest {
     @Test
     public void testFreqCalc() {
     	
-    	//Tests the static frequency calculation
-    	//The frequency calculation for two consecutive indexes 
-    	//(starting with an odd one) should be the same
+    	// Tests the static frequency calculation
+    	// The frequency calculation for two consecutive indexes 
+    	// (starting with an odd one) should be the same
     	
     	double test10 = FockState.calcFrequency(7, 204, 0.15, 0.7);
     	double epsilon = 0.000000001;
@@ -154,6 +154,8 @@ public class FockStateTest {
    
     @Test
     public void testFourierGets() {
+        
+        // Tests methods for passing coefficients in order required by Fourier methods
 
     	double epsilon = 0.00000001;
     	

@@ -29,6 +29,8 @@ public class GeneralStateTest {
 	@SuppressWarnings("unused")
 	@Test
 	public void test() {
+	    
+	    // Will it run test
 		
 		double epsilon = 0.0000001;
 		_genState.step();
@@ -43,9 +45,7 @@ public class GeneralStateTest {
 		Complex[] onep;
 		onep = _genState.get1PMom();
 		Complex[][] twop;
-		twop = _genState.get2PMom();
-		
-		
+		twop = _genState.get2PMom();		
 		
 	}
 

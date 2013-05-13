@@ -12,7 +12,7 @@ public class InteractionMatrixTest {
 	@Test
 	public void testIncrMomLabel() {
 		
-		//Tests the momenta label incrementation method
+		// Tests the momenta label incrementation method
 		
 		InteractionMatrix test1 = new InteractionMatrix(10, 0.1, 1.2, 300, 3);
 		InteractionMatrix test2 = new InteractionMatrix(50, 0.1, 1.2, 300, 5);
@@ -48,9 +48,7 @@ public class InteractionMatrixTest {
 	@Test
 	public void testApplyOps() {
 		
-		//Tests the operator application method
-		
-		//TODO Maybe try some more, this is very important to a couple more test cases would be good
+		// Tests the operator application method
 		
 		double epsilon = 0.0000001;
 		InteractionMatrix test3 = new InteractionMatrix(10, 0.1, 1.2, 500, 4);
@@ -100,7 +98,7 @@ public class InteractionMatrixTest {
 	@Test
 	public void testCalc() {
 		
-		//Tests the overall calculation method
+		// Tests the overall calculation method
 		
 		InteractionMatrix test6 = new InteractionMatrix(2, 0.11, 1.3, 7, 3);
 		double epsilon = 0.0000000001;
@@ -124,7 +122,7 @@ public class InteractionMatrixTest {
 	@Test
 	public void testSymmetric() {
 	    
-	    //The interaction matrix should be symmetric
+	    // The interaction matrix should be symmetric
 	    
 	    int numstates1 = 50;
 	    int size1 = 10;

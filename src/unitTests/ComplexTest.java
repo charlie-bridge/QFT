@@ -7,6 +7,8 @@ import org.junit.Test;
 import utilities.Complex;
 
 public class ComplexTest {
+    
+    // COMPLEX CLASS SUPERCEDED BY CODEBASE VERSION, TESTS HERE ARE REDUNDANT
 
 	@Test
 	public void testSetUpAndGet() {

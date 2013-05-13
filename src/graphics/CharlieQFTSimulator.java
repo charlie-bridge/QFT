@@ -18,12 +18,12 @@ import uk.ac.cam.cal56.qft.WavePacket;
 import uk.ac.cam.cal56.qft.impl.MomentumWavePacket;
 
 @SuppressWarnings("serial")
-public class StolenCode extends SimulatorFrame {
+public class CharlieQFTSimulator extends SimulatorFrame {
 
-	// Stolen QFTSandbox
+	// Extends codebase's SimulatorFrame to give personal implementation
 	
     // @formatter:off
-    protected String getFrameTitle()    { return "WOOOOO"; }
+    protected String getFrameTitle()    { return "A Quantum Field Theory Simulator"; }
     protected Color getDisplayColor()   { return Color.BLACK; }
     protected Color getLabelColor()     { return Color.GRAY; }
     protected int getFrameWidth()       { return 1100; }
@@ -64,7 +64,6 @@ public class StolenCode extends SimulatorFrame {
         try {
             state = new GeneralState(N, PmaxSlider.getValue(), decode(mSlider.getValue()),
                decode(dxSlider.getValue()), decode(dtSlider.getValue()), lambdas, wavePacket);
-            //state = new GeneralState(32, 5, 1e-1, 1e0, 1e-4, lambdas, wavePacket);
         }
         catch (IOException ioe) {
             System.out.println("Trouble above: " + ioe.getMessage());
@@ -77,7 +76,7 @@ public class StolenCode extends SimulatorFrame {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    StolenCode frame = new StolenCode();
+                    CharlieQFTSimulator frame = new CharlieQFTSimulator();
                     frame.setVisible(true);
                 }
                 catch (Exception e) {
@@ -86,5 +85,5 @@ public class StolenCode extends SimulatorFrame {
             }
         });
     }
-	
+    
 }

@@ -1,6 +1,8 @@
 package utilities;
 
 public class Complex {
+    
+    // SUPERCEDED BY CODEBASE VERSION OF COMPLEX CLASS, DO NOT USE
 	
 	private double _real;
 	private double _comp;
